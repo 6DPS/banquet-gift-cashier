@@ -263,8 +263,9 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
+  const query = Object.fromEntries(parsedUrl.searchParams.entries());
 
   // 1. SSE 实时长连接
   if (pathname === '/api/stream') {
@@ -284,7 +285,7 @@ const server = http.createServer((req, res) => {
 
   // 2. API 路由分发
   if (pathname.startsWith('/api/')) {
-    handleApiRequest(req, res, pathname, parsedUrl.query);
+    handleApiRequest(req, res, pathname, query);
     return;
   }
 

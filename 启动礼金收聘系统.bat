@@ -20,8 +20,8 @@ netstat -ano | findstr /R /C:":8089 .*LISTENING" >nul 2>nul
 if %errorlevel% equ 0 (
     echo [1/2] Service is already running on Port 8089. Opening interface...
 ) else (
-    echo [1/2] Starting background service on Port 8089...
-    start /min "BanquetCashierService" node server.js
+    echo [1/2] Starting background service silently on Port 8089...
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-server.ps1"
     ping 127.0.0.1 -n 3 >nul 2>nul
 )
 
@@ -37,13 +37,4 @@ if defined EDGE_EXE (
     start http://localhost:8089
 )
 
-echo.
-echo ====================================================================
-echo   [SUCCESS] Banquet Gift Cashier is now running!
-echo   - Local Dashboard : http://localhost:8089
-echo   - Mobile Sync     : Scan QR code on top right of the dashboard
-echo ====================================================================
-echo.
-echo Window closing in 4 seconds...
-ping 127.0.0.1 -n 5 >nul 2>nul
 exit

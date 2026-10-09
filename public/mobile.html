@@ -174,9 +174,20 @@
           </div>
         </div>
 
+        <!-- 扩展输入项：席位桌号、随礼物品、代随礼备注 (与电脑端100%同步) -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="mSeatTable">席位桌号引导 (可选)</label>
+          <input type="text" id="mSeatTable" placeholder="如: 主桌2号、同学6桌">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="mGiftItems" id="mLabelGiftItems">随礼物品 / 贺礼品名 (免填礼金金额)</label>
+          <input type="text" id="mGiftItems" placeholder="如: 烟酒两箱、金手镯、高档茶礼、家电等">
+        </div>
+
         <div class="form-group" style="margin-bottom: 18px;">
-          <label class="form-label">随礼物品 / 席位备注 (可选)</label>
-          <input type="text" id="mNotes" placeholder="如: 代李四随礼、随礼烟酒">
+          <label class="form-label" for="mNotes" id="mLabelNotes">代随礼 / 事由备注 (可选)</label>
+          <input type="text" id="mNotes" placeholder="如: 代二叔张建华随礼贺喜">
         </div>
 
         <button type="submit" class="btn-primary btn-lg" style="width: 100%; height: 50px; font-size: 17px;" id="mBtnSubmit">
@@ -274,7 +285,12 @@
         mAmount.value = '';
         mAmount.placeholder = (currentEventType === 'white' ? '免填金额 (花圈/挽联登记)' : '免填金额 (实物礼品登记)');
         mWordsDisplay.textContent = (currentEventType === 'white' ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)');
-        document.getElementById('mNotes').focus();
+        const giftInput = document.getElementById('mGiftItems');
+        if (giftInput) {
+          giftInput.focus();
+          giftInput.style.boxShadow = '0 0 0 3px rgba(168, 85, 247, 0.3)';
+          setTimeout(() => { giftInput.style.boxShadow = ''; }, 1200);
+        }
       } else {
         mAmount.required = true;
         mAmount.placeholder = (currentEventType === 'white' ? '输入奠仪金额 (如: 500)' : '输入礼金金额 (如: 800)');
@@ -308,6 +324,8 @@
           
           const giftIcon = document.getElementById('mPayGiftIcon');
           const giftText = document.getElementById('mPayGiftText');
+          const labelGift = document.getElementById('mLabelGiftItems');
+          const inputGift = document.getElementById('mGiftItems');
           const labelNotes = document.getElementById('mLabelNotes');
           const inputNotes = document.getElementById('mNotes');
 
@@ -317,8 +335,10 @@
             document.getElementById('mEventTypeBadge').textContent = '白事追思';
             if (giftIcon) giftIcon.textContent = '💐';
             if (giftText) giftText.textContent = '花圈挽联';
-            if (labelNotes) labelNotes.textContent = '花圈挽联 / 祭仪与事由 (免填金额)';
-            if (inputNotes) inputNotes.placeholder = '如: 大花圈两个、挽联一副、代二叔致祭';
+            if (labelGift) labelGift.textContent = '花圈挽联 / 祭仪品名 (免填金额)';
+            if (inputGift) inputGift.placeholder = '如: 大花圈两个、挽联一副、祭礼纸帛';
+            if (labelNotes) labelNotes.textContent = '代致祭 / 事由备注 (可选)';
+            if (inputNotes) inputNotes.placeholder = '如: 代二叔张建华致哀奠仪';
             const relBox = document.querySelector('.quick-tags');
             if (relBox) {
               relBox.innerHTML = `
@@ -338,8 +358,10 @@
             document.getElementById('mEventTypeBadge').textContent = '红事大吉';
             if (giftIcon) giftIcon.textContent = '🎁';
             if (giftText) giftText.textContent = '实物礼品';
-            if (labelNotes) labelNotes.textContent = '随礼物品 / 贺礼品名与事由 (免填金额)';
-            if (inputNotes) inputNotes.placeholder = '如: 烟酒两箱、金手镯、代李四随礼';
+            if (labelGift) labelGift.textContent = '随礼物品 / 贺礼品名 (免填礼金金额)';
+            if (inputGift) inputGift.placeholder = '如: 烟酒两箱、金手镯、高档茶礼、家电等';
+            if (labelNotes) labelNotes.textContent = '代随礼 / 事由备注 (可选)';
+            if (inputNotes) inputNotes.placeholder = '如: 代二叔张建华随礼贺喜';
             const relBox = document.querySelector('.quick-tags');
             if (relBox) {
               relBox.innerHTML = `
@@ -376,20 +398,30 @@
         box.innerHTML = '<div style="color: #94a3b8; font-size: 13px; text-align: center; padding: 10px;">暂无收礼记录</div>';
         return;
       }
-      box.innerHTML = records.slice(0, 8).map(r => `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px;">
-          <div>
-            <div style="font-weight: 600; font-size: 14px;">${r.guestName} <span style="font-size: 12px; color: #64748b; font-weight: normal;">(${r.relation || '亲友'})</span></div>
-            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
-              ${(r.paymentMethod === '实物礼品' && currentEventType === 'white') ? '💐 花圈挽联' : r.paymentMethod}
-              ${(r.giftItems || r.notes) ? ` · ${r.giftItems || r.notes}` : ''} · ${new Date(r.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+      box.innerHTML = records.slice(0, 8).map(r => {
+        const extraList = [];
+        if (r.seatTable) extraList.push(`桌号: ${r.seatTable}`);
+        if (r.giftItems) extraList.push(`物品: ${r.giftItems}`);
+        if (r.notes) extraList.push(`备注: ${r.notes}`);
+        const extraText = extraList.length > 0 ? ` · ${extraList.join(' | ')}` : '';
+
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <div>
+              <div style="font-weight: 600; font-size: 14px;">
+                ${r.guestName}
+                <span style="font-size: 12px; color: #64748b; font-weight: normal;">(${r.relation || '亲友'})</span>
+              </div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                ${(r.paymentMethod === '实物礼品' && currentEventType === 'white') ? '💐 花圈挽联' : r.paymentMethod}${extraText} · ${new Date(r.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </div>
+            </div>
+            <div style="font-weight: 700; font-size: 16px; color: var(--theme-primary);">
+              ${(r.paymentMethod === '实物礼品' && (!r.amount || Number(r.amount) === 0)) ? (currentEventType === 'white' ? '💐 花圈挽联' : '🎁 实物贺礼') : `¥ ${Number(r.amount).toLocaleString()}`}
             </div>
           </div>
-          <div style="font-weight: 700; font-size: 16px; color: var(--theme-primary);">
-            ${(r.paymentMethod === '实物礼品' && (!r.amount || Number(r.amount) === 0)) ? (currentEventType === 'white' ? '💐 花圈挽联' : '🎁 实物贺礼') : `¥ ${Number(r.amount).toLocaleString()}`}
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     // 表单提交
@@ -400,6 +432,8 @@
       const amountVal = document.getElementById('mAmount').value.trim();
       const amount = isGift ? (amountVal ? Math.max(0, Number(amountVal) || 0) : 0) : Number(amountVal);
       const relation = document.getElementById('mRelation').value.trim() || '亲友';
+      const seatTable = document.getElementById('mSeatTable').value.trim();
+      const giftItems = document.getElementById('mGiftItems').value.trim();
       const notes = document.getElementById('mNotes').value.trim();
 
       if (!guestName) {
@@ -422,8 +456,9 @@
             amount,
             paymentMethod: currentPayMethod,
             relation,
-            giftItems: isGift ? notes : '',
-            notes: notes,
+            seatTable,
+            giftItems: isGift ? (giftItems || notes || (currentEventType === 'white' ? '花圈挽联' : '实物礼品')) : giftItems,
+            notes,
             channel: 'mobile',
             recorder: '手机端协同'
           })
@@ -434,6 +469,8 @@
           document.getElementById('mGuestName').value = '';
           document.getElementById('mAmount').value = '';
           mWordsDisplay.textContent = '零元整';
+          document.getElementById('mSeatTable').value = '';
+          document.getElementById('mGiftItems').value = '';
           document.getElementById('mNotes').value = '';
           document.getElementById('mGuestName').focus();
           loadEventData();

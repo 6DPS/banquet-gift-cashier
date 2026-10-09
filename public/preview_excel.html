@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Microsoft Excel - 导出详单预览</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: #f3f4f6;
+      color: #1e293b;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .excel-app-window {
+      width: 1360px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+    /* Excel 顶栏 */
+    .excel-title-bar {
+      background: #107c41;
+      color: #ffffff;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 13px;
+    }
+    .excel-title-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+    }
+    .excel-icon-box {
+      background: #0b5c30;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .excel-ribbon-bar {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 20px;
+      font-size: 12.5px;
+      color: #475569;
+    }
+    .excel-ribbon-bar span.active {
+      color: #107c41;
+      font-weight: 600;
+      border-bottom: 2px solid #107c41;
+      padding: 6px 4px;
+    }
+    /* 编辑公式栏 */
+    .formula-bar {
+      height: 32px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 12px;
+      gap: 10px;
+    }
+    .name-box {
+      width: 60px;
+      padding: 2px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 2px;
+      text-align: center;
+      color: #334155;
+    }
+    .fx-icon {
+      color: #94a3b8;
+      font-weight: bold;
+      font-style: italic;
+    }
+    .formula-content {
+      flex: 1;
+      color: #1e293b;
+      font-family: 'Consolas', monospace;
+    }
+    /* 表格区域 */
+    .sheet-viewport {
+      overflow-x: auto;
+      background: #ffffff;
+    }
+    table.excel-grid {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 11.5px;
+      color: #1e293b;
+      user-select: none;
+    }
+    th.col-header {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+      font-weight: 600;
+      text-align: center;
+      height: 22px;
+      font-size: 11px;
+    }
+    td.row-header {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+      text-align: center;
+      font-weight: 600;
+      width: 38px;
+      font-size: 11px;
+    }
+    td.cell {
+      border: 1px solid #e2e8f0;
+      padding: 4px 6px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    /* 单元格微样式 */
+    .c-center { text-align: center; }
+    .c-right { text-align: right; font-variant-numeric: tabular-nums; }
+    .c-left { text-align: left; }
+    .c-bold { font-weight: bold; }
+    .indent-1 { padding-left: 14px !important; }
+
+    /* 状态徽标 */
+    .tag-purple {
+      background: #f3e8ff;
+      color: #6b21a8;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-cash {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-wechat {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-alipay {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-bank {
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-returned {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .tag-pending {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    /* 底栏工作表标签 */
+    .sheet-tabs-bar {
+      height: 36px;
+      background: #f8fafc;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      font-size: 12px;
+    }
+    .sheet-tabs-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sheet-tab {
+      padding: 5px 16px;
+      border: 1px solid #cbd5e1;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      background: #e2e8f0;
+      color: #475569;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .sheet-tab.active {
+      background: #ffffff;
+      color: #107c41;
+      font-weight: bold;
+      border-top: 2px solid #107c41;
+    }
+  </style>
+</head>
+<body>
+
+<div class="excel-app-window">
+  <!-- 标题栏 -->
+  <div class="excel-title-bar">
+    <div class="excel-title-left">
+      <div class="excel-icon-box">X</div>
+      <span id="excelFileName">华堂大喜婚宴_礼金收聘明细表_2026-10-09.xlsx - Excel</span>
+    </div>
+    <div style="font-size: 12px; color: rgba(255,255,255,0.85);">
+      微软 Office / WPS 官方原生自适应对账排版
+    </div>
+  </div>
+
+  <!-- 功能区简单导航 -->
+  <div class="excel-ribbon-bar">
+    <span class="active">开始</span>
+    <span>插入</span>
+    <span>页面布局</span>
+    <span>公式</span>
+    <span>数据</span>
+    <span>审阅</span>
+    <span>视图</span>
+  </div>
+
+  <!-- 编辑栏 -->
+  <div class="formula-bar">
+    <div class="name-box">A1</div>
+    <span class="fx-icon">fx</span>
+    <div class="formula-content" id="fxContent">【华堂大喜婚宴】礼金收聘全场明细簿</div>
+  </div>
+
+  <!-- 表格视图 -->
+  <div class="sheet-viewport" id="sheet1View">
+    <table class="excel-grid">
+      <thead>
+        <tr>
+          <th style="width: 38px; background: #e2e8f0;"></th>
+          <th class="col-header" style="width: 50px;">A</th>
+          <th class="col-header" style="width: 100px;">B</th>
+          <th class="col-header" style="width: 110px;">C</th>
+          <th class="col-header" style="width: 140px;">D</th>
+          <th class="col-header" style="width: 85px;">E</th>
+          <th class="col-header" style="width: 80px;">F</th>
+          <th class="col-header" style="width: 75px;">G</th>
+          <th class="col-header" style="width: 180px;">H</th>
+          <th class="col-header" style="width: 130px;">I</th>
+          <th class="col-header" style="width: 75px;">J</th>
+          <th class="col-header" style="width: 90px;">K</th>
+          <th class="col-header" style="width: 155px;">L</th>
+          <th class="col-header" style="width: 80px;">M</th>
+          <th class="col-header" style="width: 110px;">N</th>
+          <th class="col-header" style="width: 160px;">O</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 1. 标题横幅 -->
+        <tr>
+          <td class="row-header">1</td>
+          <td class="cell c-center" colspan="15" style="background: #991b1b; color: #ffffff; font-size: 15px; font-weight: bold; height: 38px;">
+            【华堂大喜婚宴】礼金收聘全场明细簿
+          </td>
+        </tr>
+
+        <!-- 2. 信息概览条 -->
+        <tr>
+          <td class="row-header">2</td>
+          <td class="cell c-center c-bold" colspan="3" style="background: #fef2f2; color: #334155;">[设宴吉日] 2026-10-08</td>
+          <td class="cell c-center c-bold" colspan="3" style="background: #fef2f2; color: #334155;">[东家/主事] 东家 (主家)</td>
+          <td class="cell c-center c-bold" colspan="3" style="background: #fef2f2; color: #334155;">[设宴地点] 主宴会大厅</td>
+          <td class="cell c-center c-bold" colspan="3" style="background: #fef2f2; color: #dc2626;">★ 礼金总额: ¥ 113,400 (壹拾壹万叁仟肆佰元整)</td>
+          <td class="cell c-center c-bold" colspan="3" style="background: #fef2f2; color: #334155;">● 随礼宾客: 17 位 | 预设桌数: 30 桌</td>
+        </tr>
+
+        <!-- 3. 空白隔离行 -->
+        <tr style="height: 6px;"><td class="row-header">3</td><td class="cell" colspan="15" style="background: #ffffff; border: none;"></td></tr>
+
+        <!-- 4. 主表表头 -->
+        <tr style="background: #b91c1c; color: #ffffff; font-weight: bold; height: 28px;">
+          <td class="row-header" style="background: #e2e8f0;">4</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">序号</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">宾客姓名</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">礼金金额 (元)</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">大写金额</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">支付渠道</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">亲友关系</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">席位桌号</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">随礼物品/附赠</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">代随礼/事由备注</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">录入渠道</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">经手人</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">登记时间</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">还礼状态</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">还礼金额 (元)</td>
+          <td class="cell c-center" style="background: #b91c1c; color: #fff;">还礼事项备忘</td>
+        </tr>
+
+        <!-- 数据行 -->
+        <tr>
+          <td class="row-header">5</td>
+          <td class="cell c-center">1</td>
+          <td class="cell c-center c-bold">魏代平</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+          <td class="cell c-center" style="background: #f5f3ff;"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left c-bold indent-1" style="color: #581c87;">iPhone18promax  1TB</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">手机端</td>
+          <td class="cell c-center">手机端协同</td>
+          <td class="cell c-center">2026/10/9 11:54:59</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">6</td>
+          <td class="cell c-center">2</td>
+          <td class="cell c-center c-bold">fff</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+          <td class="cell c-center" style="background: #f5f3ff;"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left c-bold indent-1" style="color: #581c87;">家电</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:50:17</td>
+          <td class="cell c-center"><span class="tag-returned">已还礼</span></td>
+          <td class="cell c-right c-bold">¥ 600</td>
+          <td class="cell c-left indent-1">已于 2026-10-09 还礼</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">7</td>
+          <td class="cell c-center">3</td>
+          <td class="cell c-center c-bold">hhh</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+          <td class="cell c-center" style="background: #f5f3ff;"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left c-bold indent-1" style="color: #581c87;">烟酒两箱</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:35:39</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">8</td>
+          <td class="cell c-center">4</td>
+          <td class="cell c-center c-bold">cdd</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+          <td class="cell c-center" style="background: #f5f3ff;"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center">同学</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left c-bold indent-1" style="color: #581c87;">金子两斤</td>
+          <td class="cell c-left indent-1">金子两斤</td>
+          <td class="cell c-center">手机端</td>
+          <td class="cell c-center">手机端协同</td>
+          <td class="cell c-center">2026/10/9 11:31:51</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">9</td>
+          <td class="cell c-center">5</td>
+          <td class="cell c-center c-bold">ooo</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+          <td class="cell c-center" style="background: #f5f3ff;"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center"><span class="tag-purple">实物礼品</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left c-bold indent-1" style="color: #581c87;">iphone</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:27:41</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">10</td>
+          <td class="cell c-center">6</td>
+          <td class="cell c-center c-bold">bbb</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 7,000</td>
+          <td class="cell c-center" style="color: #64748b;">柒仟元整</td>
+          <td class="cell c-center"><span class="tag-bank">银行卡</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:17:02</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">11</td>
+          <td class="cell c-center">7</td>
+          <td class="cell c-center c-bold">豫U</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 6,000</td>
+          <td class="cell c-center" style="color: #64748b;">陆仟元整</td>
+          <td class="cell c-center"><span class="tag-alipay">支付宝</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:16:53</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">12</td>
+          <td class="cell c-center">8</td>
+          <td class="cell c-center c-bold">gggg</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 9,000</td>
+          <td class="cell c-center" style="color: #64748b;">玖仟元整</td>
+          <td class="cell c-center"><span class="tag-alipay">支付宝</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:16:44</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">13</td>
+          <td class="cell c-center">9</td>
+          <td class="cell c-center c-bold">rrrr</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 30,000</td>
+          <td class="cell c-center" style="color: #64748b;">叁万元整</td>
+          <td class="cell c-center"><span class="tag-wechat">微信</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:16:37</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">14</td>
+          <td class="cell c-center">10</td>
+          <td class="cell c-center c-bold">ttt</td>
+          <td class="cell c-right c-bold" style="color: #dc2626;">¥ 50,000</td>
+          <td class="cell c-center" style="color: #64748b;">伍万元整</td>
+          <td class="cell c-center"><span class="tag-cash">现金</span></td>
+          <td class="cell c-center">亲友</td>
+          <td class="cell c-center">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-left indent-1">-</td>
+          <td class="cell c-center">电脑端</td>
+          <td class="cell c-center">电脑主账房</td>
+          <td class="cell c-center">2026/10/9 11:15:48</td>
+          <td class="cell c-center"><span class="tag-pending">待还礼</span></td>
+          <td class="cell c-right">¥ 0</td>
+          <td class="cell c-left indent-1">-</td>
+        </tr>
+
+        <!-- 主合计行 -->
+        <tr style="background: #fef3c7; height: 30px; font-weight: bold;">
+          <td class="row-header" style="background: #fef3c7;">22</td>
+          <td class="cell c-center" style="color: #92400e;">【全场总计】</td>
+          <td class="cell c-center">全场共 17 笔</td>
+          <td class="cell c-right" style="color: #dc2626; font-size: 13px;">¥ 113,400</td>
+          <td class="cell c-center">壹拾壹万叁仟肆佰元整</td>
+          <td class="cell c-left indent-1" colspan="11" style="color: #78350f;">
+            全场渠道实收：现金 ¥61,400 (6笔) &nbsp;|&nbsp; 微信 ¥30,000 (1笔) &nbsp;|&nbsp; 支付宝 ¥15,000 (2笔) &nbsp;|&nbsp; 银行卡 ¥7,000 (1笔) &nbsp;|&nbsp; 实物礼品 7笔
+          </td>
+        </tr>
+
+        <!-- 空白行 -->
+        <tr style="height: 10px;"><td class="row-header">23</td><td class="cell" colspan="15" style="border: none;"></td></tr>
+
+        <!-- 财务平账台账标题 -->
+        <tr>
+          <td class="row-header">24</td>
+          <td class="cell c-center" colspan="15" style="background: #991b1b; color: #ffffff; font-weight: bold; font-size: 13px; height: 28px;">
+            【账房财务核算 · 各支付渠道礼金实收对账明细台账】
+          </td>
+        </tr>
+
+        <!-- 台账表头 -->
+        <tr style="background: #dc2626; color: #ffffff; font-weight: bold; height: 26px;">
+          <td class="row-header" style="background: #e2e8f0;">25</td>
+          <td class="cell c-center" colspan="2" style="background: #dc2626; color: #fff;">核算支付渠道</td>
+          <td class="cell c-center" style="background: #dc2626; color: #fff;">实收金额 / 价值 (元)</td>
+          <td class="cell c-center" style="background: #dc2626; color: #fff;">金额大写 / 渠道核验</td>
+          <td class="cell c-center" colspan="2" style="background: #dc2626; color: #fff;">收礼笔数</td>
+          <td class="cell c-center" colspan="2" style="background: #dc2626; color: #fff;">全场金额占比</td>
+          <td class="cell c-center" colspan="7" style="background: #dc2626; color: #fff;">财务流向与交接说明</td>
+        </tr>
+
+        <!-- 对账明细 -->
+        <tr>
+          <td class="row-header">26</td>
+          <td class="cell c-center" colspan="2" style="background: #fef3c7; color: #92400e; font-weight: bold;">💵 现金点钞 (现场实钞)</td>
+          <td class="cell c-right c-bold">¥ 61,400</td>
+          <td class="cell c-center" style="color: #475569;">陆万壹仟肆佰元整</td>
+          <td class="cell c-center" colspan="2">6 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #475569;">54.1%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #475569;">现场账房收钞点算，已封箱交接 / 需东家清点</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">27</td>
+          <td class="cell c-center" colspan="2" style="background: #d1fae5; color: #065f46; font-weight: bold;">💬 微信支付 (扫码/转账)</td>
+          <td class="cell c-right c-bold">¥ 30,000</td>
+          <td class="cell c-center" style="color: #475569;">叁万元整</td>
+          <td class="cell c-center" colspan="2">1 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #475569;">26.5%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #475569;">主家/收款人微信扫码与直接转账入账，附微信账单明细</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">28</td>
+          <td class="cell c-center" colspan="2" style="background: #e0f2fe; color: #0369a1; font-weight: bold;">💳 支付宝支付 (扫码/转账)</td>
+          <td class="cell c-right c-bold">¥ 15,000</td>
+          <td class="cell c-center" style="color: #475569;">壹万伍仟元整</td>
+          <td class="cell c-center" colspan="2">2 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #475569;">13.2%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #475569;">支付宝收款码或手机转账入账，附电子回单交易凭证</td>
+        </tr>
+
+        <tr style="background: #fff7f7;">
+          <td class="row-header">29</td>
+          <td class="cell c-center" colspan="2" style="background: #e0e7ff; color: #3730a3; font-weight: bold;">🏦 银行卡汇款 (网银/POS)</td>
+          <td class="cell c-right c-bold">¥ 7,000</td>
+          <td class="cell c-center" style="color: #475569;">柒仟元整</td>
+          <td class="cell c-center" colspan="2">1 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #475569;">6.2%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #475569;">借记卡/银行账户跨行汇款或刷卡入账，附银行流水凭证</td>
+        </tr>
+
+        <tr>
+          <td class="row-header">30</td>
+          <td class="cell c-center" colspan="2" style="background: #f3e8ff; color: #6b21a8; font-weight: bold;">🎁 实物礼品 (随礼贺礼)</td>
+          <td class="cell c-right c-bold" style="color: #7c3aed;">实物入库 (7件)</td>
+          <td class="cell c-center" style="color: #475569;">见随礼物品品名</td>
+          <td class="cell c-center" colspan="2">7 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #475569;">0.0%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #475569;">现场贺喜实物/烟酒茶礼/金饰，已入库礼品专区</td>
+        </tr>
+
+        <!-- 平账总计底行 -->
+        <tr style="background: #fef3c7; border-top: 1px solid #94a3b8; border-bottom: 3px double #0f172a; height: 32px; font-weight: bold;">
+          <td class="row-header" style="background: #fef3c7;">31</td>
+          <td class="cell c-center" colspan="2" style="color: #0f172a;">【全渠道平账总计】</td>
+          <td class="cell c-right" style="color: #dc2626; font-size: 13px;">¥ 113,400</td>
+          <td class="cell c-center" style="color: #0f172a;">壹拾壹万叁仟肆佰元整</td>
+          <td class="cell c-center" colspan="2">17 笔</td>
+          <td class="cell c-center" colspan="2" style="color: #0f172a; font-size: 12px;">100.0%</td>
+          <td class="cell c-left indent-1" colspan="7" style="color: #991b1b;">全渠道现金、电子收款与实物全部平账核算一致</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Sheet 2 视图容器 (默认隐藏或可切换) -->
+  <div class="sheet-viewport" id="sheet2View" style="display: none; padding: 18px 24px;">
+    <!-- 横幅 -->
+    <div style="background: #991b1b; color: #ffffff; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 4px; text-align: center; margin-bottom: 16px;">
+      【华堂大喜婚宴】礼金核对与分类统计表
+    </div>
+
+    <!-- 6个指标卡片 -->
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px;">
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">礼金总金额</div>
+        <div style="font-size: 18px; color: #dc2626; font-weight: bold; margin-top: 4px;">¥ 113,400</div>
+      </div>
+      <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">实收现金总计</div>
+        <div style="font-size: 18px; color: #b45309; font-weight: bold; margin-top: 4px;">¥ 61,400</div>
+      </div>
+      <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">微信扫码入账</div>
+        <div style="font-size: 18px; color: #047857; font-weight: bold; margin-top: 4px;">¥ 30,000</div>
+      </div>
+      <div style="background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">支付宝转账</div>
+        <div style="font-size: 18px; color: #0284c7; font-weight: bold; margin-top: 4px;">¥ 15,000</div>
+      </div>
+      <div style="background: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">银行卡汇款</div>
+        <div style="font-size: 18px; color: #3730a3; font-weight: bold; margin-top: 4px;">¥ 7,000</div>
+      </div>
+      <div style="background: #f3e8ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 11px; color: #64748b; font-weight: bold;">随礼宾客总数</div>
+        <div style="font-size: 18px; color: #7e22ce; font-weight: bold; margin-top: 4px;">17 位</div>
+      </div>
+    </div>
+
+    <!-- 表一: 渠道核数 -->
+    <div style="font-size: 13px; font-weight: bold; color: #991b1b; margin-bottom: 8px;">【一、礼金各支付渠道实收核数对账】</div>
+    <table class="excel-grid" style="margin-bottom: 24px; border: 1px solid #cbd5e1;">
+      <tr style="background: #b91c1c; color: #fff; font-weight: bold; height: 26px;">
+        <th style="padding: 6px;">支付渠道</th>
+        <th style="padding: 6px;">收礼笔数</th>
+        <th style="padding: 6px;">合计金额 (元)</th>
+        <th style="padding: 6px;">金额占比</th>
+        <th style="padding: 6px;">核算说明</th>
+      </tr>
+      <tr>
+        <td class="cell c-center c-bold" style="background: #fef3c7; color: #92400e;">现金点钞</td>
+        <td class="cell c-center">6 笔</td>
+        <td class="cell c-right c-bold">¥ 61,400</td>
+        <td class="cell c-center">54.1%</td>
+        <td class="cell c-left indent-1">现场纸币现金</td>
+      </tr>
+      <tr style="background: #fff7f7;">
+        <td class="cell c-center c-bold" style="background: #d1fae5; color: #065f46;">微信转账</td>
+        <td class="cell c-center">1 笔</td>
+        <td class="cell c-right c-bold">¥ 30,000</td>
+        <td class="cell c-center">26.5%</td>
+        <td class="cell c-left indent-1">微信扫码与零钱</td>
+      </tr>
+      <tr>
+        <td class="cell c-center c-bold" style="background: #e0f2fe; color: #0369a1;">支付宝转账</td>
+        <td class="cell c-center">2 笔</td>
+        <td class="cell c-right c-bold">¥ 15,000</td>
+        <td class="cell c-center">13.2%</td>
+        <td class="cell c-left indent-1">支付宝电子转账</td>
+      </tr>
+      <tr style="background: #fff7f7;">
+        <td class="cell c-center c-bold" style="background: #e0e7ff; color: #3730a3;">银行卡汇款</td>
+        <td class="cell c-center">1 笔</td>
+        <td class="cell c-right c-bold">¥ 7,000</td>
+        <td class="cell c-center">6.2%</td>
+        <td class="cell c-left indent-1">网银跨行/POS刷卡</td>
+      </tr>
+      <tr>
+        <td class="cell c-center c-bold" style="background: #f3e8ff; color: #6b21a8;">实物礼品折合</td>
+        <td class="cell c-center">7 笔</td>
+        <td class="cell c-right c-bold">¥ 0</td>
+        <td class="cell c-center">0.0%</td>
+        <td class="cell c-left indent-1">随礼实物物品</td>
+      </tr>
+      <tr style="background: #fef3c7; font-weight: bold; border-top: 1px solid #94a3b8; border-bottom: 3px double #0f172a;">
+        <td class="cell c-center">渠道总计</td>
+        <td class="cell c-center">17 笔</td>
+        <td class="cell c-right" style="color: #dc2626;">¥ 113,400</td>
+        <td class="cell c-center">100.0%</td>
+        <td class="cell c-left indent-1">全渠道平账一致</td>
+      </tr>
+    </table>
+
+    <!-- 表二: 亲友关系分类 -->
+    <div style="font-size: 13px; font-weight: bold; color: #991b1b; margin-bottom: 8px;">【二、礼金亲友关系分类分布统计】</div>
+    <table class="excel-grid" style="border: 1px solid #cbd5e1;">
+      <tr style="background: #b91c1c; color: #fff; font-weight: bold; height: 26px;">
+        <th style="padding: 6px;">亲友关系分类</th>
+        <th style="padding: 6px;">来宾人数</th>
+        <th style="padding: 6px;">随礼总额 (元)</th>
+        <th style="padding: 6px;">人均礼金 (元)</th>
+        <th style="padding: 6px;">占总额比</th>
+      </tr>
+      <tr>
+        <td class="cell c-center c-bold">亲友 (核心主客)</td>
+        <td class="cell c-center">16 位</td>
+        <td class="cell c-right c-bold" style="color: #dc2626;">¥ 113,400</td>
+        <td class="cell c-right">¥ 7,088</td>
+        <td class="cell c-center">100.0%</td>
+      </tr>
+      <tr style="background: #fff7f7;">
+        <td class="cell c-center c-bold">同学 (随礼金子)</td>
+        <td class="cell c-center">1 位</td>
+        <td class="cell c-right c-bold" style="color: #dc2626;">¥ 0</td>
+        <td class="cell c-right">¥ 0</td>
+        <td class="cell c-center">0.0%</td>
+      </tr>
+      <tr style="background: #fef3c7; font-weight: bold; border-top: 1px solid #94a3b8; border-bottom: 3px double #0f172a;">
+        <td class="cell c-center">关系总计</td>
+        <td class="cell c-center">17 位</td>
+        <td class="cell c-right" style="color: #dc2626;">¥ 113,400</td>
+        <td class="cell c-right">¥ 6,671</td>
+        <td class="cell c-center">100.0%</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 工作表标签条 -->
+  <div class="sheet-tabs-bar">
+    <div class="sheet-tabs-left">
+      <button style="border: none; background: transparent; cursor: pointer; color: #64748b;">◀</button>
+      <button style="border: none; background: transparent; cursor: pointer; color: #64748b;">▶</button>
+      <div class="sheet-tab active" id="tabSheet1" onclick="selectSheet(1)">礼金收聘明细簿</div>
+      <div class="sheet-tab" id="tabSheet2" onclick="selectSheet(2)">礼金核对与分类统计</div>
+    </div>
+    <div style="color: #64748b; font-size: 11px; display: flex; align-items: center; gap: 12px;">
+      <span>就绪</span>
+      <span>100% 缩放</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function selectSheet(num) {
+    if (num === 1) {
+      document.getElementById('sheet1View').style.display = 'block';
+      document.getElementById('sheet2View').style.display = 'none';
+      document.getElementById('tabSheet1').classList.add('active');
+      document.getElementById('tabSheet2').classList.remove('active');
+      document.getElementById('fxContent').textContent = '【华堂大喜婚宴】礼金收聘全场明细簿';
+    } else {
+      document.getElementById('sheet1View').style.display = 'none';
+      document.getElementById('sheet2View').style.display = 'block';
+      document.getElementById('tabSheet1').classList.remove('active');
+      document.getElementById('tabSheet2').classList.add('active');
+      document.getElementById('fxContent').textContent = '【华堂大喜婚宴】礼金核对与分类统计表';
+    }
+  }
+
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('sheet') === '2') {
+    selectSheet(2);
+  }
+</script>
+
+</body>
+</html>

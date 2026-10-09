@@ -483,9 +483,11 @@
     });
 
     // 建立 SSE 实时监听
-    const sse = new EventSource('/api/stream');
-    sse.addEventListener('record_added', () => loadEventData());
-    sse.addEventListener('event_switched', () => loadEventData());
+    if (!new URLSearchParams(window.location.search).get('no_sse')) {
+      const sse = new EventSource('/api/stream');
+      sse.addEventListener('record_added', () => loadEventData());
+      sse.addEventListener('event_switched', () => loadEventData());
+    }
 
     loadEventData();
   </script>

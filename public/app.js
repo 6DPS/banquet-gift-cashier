@@ -1352,6 +1352,7 @@
 
   // ================= SSE 实时广播多端监听 =================
   function initSSE() {
+    if (new URLSearchParams(window.location.search).get('no_sse')) return;
     try {
       const sse = new EventSource('/api/stream');
       sse.addEventListener('record_added', () => {
@@ -1424,11 +1425,20 @@
 
   // 页面启动
   async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventParam = urlParams.get('eventId');
     dom.evtInputDate.value = new Date().toISOString().slice(0, 10);
     await loadSystemNetworkInfo();
-    await loadRecords(null);
+    await loadRecords(eventParam || null);
     await loadEvents();
     initSSE();
+
+    const tabParam = urlParams.get('tab');
+    if (tabParam) switchTab(tabParam);
+    const modalParam = urlParams.get('modal');
+    if (modalParam === 'printLedger') {
+      setTimeout(() => { if (dom.btnPrintLedger) dom.btnPrintLedger.click(); }, 350);
+    }
   }
 
   init();

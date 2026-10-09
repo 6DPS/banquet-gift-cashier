@@ -653,9 +653,13 @@
 
   function updateTopBarUI() {
     if (!state.currentEvent) return;
-    dom.topEventTitle.textContent = state.currentEvent.title;
+    if (dom.topEventTitle) dom.topEventTitle.textContent = state.currentEvent.title;
     applyTheme(state.currentEvent.eventType);
-    dom.statTables.textContent = `预设桌数: ${state.currentEvent.targetTables || 30} 桌`;
+    if (dom.statTables) dom.statTables.textContent = `预设桌数: ${state.currentEvent.targetTables || 30} 桌`;
+  }
+
+  function renderCurrentEventInfo() {
+    updateTopBarUI();
   }
 
   function renderStatsCards() {
@@ -1014,7 +1018,7 @@
           await loadEvents();
           if (state.currentEvent && state.currentEvent.id === editId) {
             state.currentEvent = updatedEv;
-            renderCurrentEventInfo();
+            updateTopBarUI();
             await loadRecords(editId);
           }
         } else {
@@ -1041,6 +1045,7 @@
         }
       }
     } catch (err) {
+      console.error('保存宴席事项异常:', err);
       showToast('保存宴席事项异常', 'error');
     }
   });
@@ -1375,7 +1380,7 @@
           const updated = JSON.parse(e.data);
           if (state.currentEvent && state.currentEvent.id === updated.id) {
             state.currentEvent = updated;
-            renderCurrentEventInfo();
+            updateTopBarUI();
           }
           loadEvents();
         } catch (err) {}

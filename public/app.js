@@ -156,6 +156,9 @@
     statCashTotal: document.getElementById('statCashTotal'),
     statWechatTotal: document.getElementById('statWechatTotal'),
     statAlipayTotal: document.getElementById('statAlipayTotal'),
+    statBankTotal: document.getElementById('statBankTotal'),
+    statLabelTotal: document.getElementById('statLabelTotal'),
+    statLabelCount: document.getElementById('statLabelCount'),
 
     // 收礼台
     cashierPanelTitle: document.getElementById('cashierPanelTitle'),
@@ -184,6 +187,11 @@
     reconcileCashAmount: document.getElementById('reconcileCashAmount'),
     reconcileWechatAmount: document.getElementById('reconcileWechatAmount'),
     reconcileAlipayAmount: document.getElementById('reconcileAlipayAmount'),
+    reconcileBankAmount: document.getElementById('reconcileBankAmount'),
+    reconcileGiftAmount: document.getElementById('reconcileGiftAmount'),
+    reconcileGiftTitle: document.getElementById('reconcileGiftTitle'),
+    reconcileGiftSub: document.getElementById('reconcileGiftSub'),
+    reconcileGiftNote: document.getElementById('reconcileGiftNote'),
     relationStatsContainer: document.getElementById('relationStatsContainer'),
 
     // 还礼页
@@ -362,6 +370,12 @@
       dom.cashierPanelTitle.textContent = '账房奠仪/香仪极速登记台';
       dom.btnSubmitRecord.innerHTML = '<span>💾</span> 登记奠仪 (Enter)';
 
+      if (dom.statLabelTotal) dom.statLabelTotal.textContent = '奠仪总金额';
+      if (dom.statLabelCount) dom.statLabelCount.textContent = '吊唁宾客人数';
+      if (dom.reconcileGiftTitle) dom.reconcileGiftTitle.textContent = '💐 花圈挽联登记';
+      if (dom.reconcileGiftSub) dom.reconcileGiftSub.textContent = '祭奠花圈挽联总件数：';
+      if (dom.reconcileGiftNote) dom.reconcileGiftNote.textContent = '现场祭奠花圈挽联布置核验。';
+
       // 白事专属：仅显示花圈挽联，不显示实物贺礼
       if (giftIcon) giftIcon.textContent = '💐';
       if (giftText) giftText.textContent = '花圈挽联';
@@ -378,6 +392,12 @@
       dom.themeModeText.textContent = '切换白事追思模式';
       dom.cashierPanelTitle.textContent = '账房极速收礼录入台';
       dom.btnSubmitRecord.innerHTML = '<span>💾</span> 立即记账 (Enter)';
+
+      if (dom.statLabelTotal) dom.statLabelTotal.textContent = '总礼金金额';
+      if (dom.statLabelCount) dom.statLabelCount.textContent = '随礼宾客人数';
+      if (dom.reconcileGiftTitle) dom.reconcileGiftTitle.textContent = '🎁 实物礼品登记';
+      if (dom.reconcileGiftSub) dom.reconcileGiftSub.textContent = '随礼贺喜物品总件数：';
+      if (dom.reconcileGiftNote) dom.reconcileGiftNote.textContent = '烟酒茶礼与金器入库专柜核验。';
 
       // 红事专属：仅显示实物礼品，不显示花圈
       if (giftIcon) giftIcon.textContent = '🎁';
@@ -468,11 +488,11 @@
     } else {
       // 现金 / 微信 / 支付宝等常规支付模式
       dom.inputAmount.required = true;
-      dom.inputAmount.placeholder = '如: 800 (回车直接保存)';
+      dom.inputAmount.placeholder = isWhite ? '如: 500 (回车直接保存)' : '如: 800 (回车直接保存)';
       dom.amountWordsDisplay.style.background = '';
       dom.amountWordsDisplay.style.borderColor = '';
       dom.amountWordsDisplay.style.color = '';
-      dom.amountWordsDisplay.textContent = digitToChinese(dom.inputAmount.value);
+      dom.amountWordsDisplay.textContent = dom.inputAmount.value ? digitToChinese(dom.inputAmount.value) : '零元整';
     }
   }
 
@@ -645,11 +665,14 @@
     dom.statAvgAmount.textContent = `平均每笔: ¥ ${(s.avgAmount || 0).toLocaleString()}`;
     dom.statCashTotal.textContent = '¥ ' + (s.cashTotal || 0).toLocaleString();
     dom.statWechatTotal.textContent = '¥ ' + (s.wechatTotal || 0).toLocaleString();
-    dom.statAlipayTotal.textContent = '¥ ' + ((s.alipayTotal || 0) + (s.otherTotal || 0)).toLocaleString();
+    dom.statAlipayTotal.textContent = '¥ ' + (s.alipayTotal || 0).toLocaleString();
+    if (dom.statBankTotal) dom.statBankTotal.textContent = '¥ ' + (s.bankTotal || 0).toLocaleString();
 
     dom.reconcileCashAmount.textContent = '¥ ' + (s.cashTotal || 0).toLocaleString();
     dom.reconcileWechatAmount.textContent = '¥ ' + (s.wechatTotal || 0).toLocaleString();
     dom.reconcileAlipayAmount.textContent = '¥ ' + (s.alipayTotal || 0).toLocaleString();
+    if (dom.reconcileBankAmount) dom.reconcileBankAmount.textContent = '¥ ' + (s.bankTotal || 0).toLocaleString();
+    if (dom.reconcileGiftAmount) dom.reconcileGiftAmount.textContent = (s.giftCount || 0) + ' 件';
   }
 
   function renderRecentTable() {

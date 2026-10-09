@@ -605,7 +605,11 @@ async function handleApiRequest(req, res, pathname, query) {
     const cashTotal = allForEvent.filter(r => r.paymentMethod === '现金').reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const wechatTotal = allForEvent.filter(r => r.paymentMethod === '微信').reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const alipayTotal = allForEvent.filter(r => r.paymentMethod === '支付宝').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const otherTotal = totalAmount - cashTotal - wechatTotal - alipayTotal;
+    const bankTotal = allForEvent.filter(r => r.paymentMethod === '银行卡').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const giftRecords = allForEvent.filter(r => r.paymentMethod === '实物礼品');
+    const giftTotal = giftRecords.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const giftCount = giftRecords.length;
+    const otherTotal = totalAmount - cashTotal - wechatTotal - alipayTotal - bankTotal;
 
     const currentEvent = database.events.find(e => e.id === eventId);
 
@@ -618,6 +622,9 @@ async function handleApiRequest(req, res, pathname, query) {
         cashTotal,
         wechatTotal,
         alipayTotal,
+        bankTotal,
+        giftTotal,
+        giftCount,
         otherTotal,
         avgAmount: allForEvent.length > 0 ? Math.round(totalAmount / allForEvent.length) : 0
       }
@@ -627,21 +634,33 @@ async function handleApiRequest(req, res, pathname, query) {
   // POST /api/records
   if (pathname === '/api/records' && req.method === 'POST') {
     parseBody(req, (err, body) => {
-      if (err || !body.guestName || body.amount === undefined) {
+      const isGift = (body && body.paymentMethod === '实物礼品');
+      if (err || !body.guestName || (!isGift && body.amount === undefined)) {
         return sendJson(res, 400, { error: '宾客姓名与礼金金额为必填项' });
       }
 
       const eventId = body.eventId || database.activeEventId;
+      const targetEvt = database.events.find(e => e.id === eventId);
+      const isWhite = (targetEvt && targetEvt.eventType === 'white');
       const amountNum = Math.max(0, Number(body.amount) || 0);
+
+      let amountWords = body.amountInWords;
+      if (!amountWords) {
+        if (isGift) {
+          amountWords = isWhite ? (body.giftItems ? `【花圈祭仪】${body.giftItems}` : '花圈挽联') : (body.giftItems ? `【实物礼品】${body.giftItems}` : '实物礼品');
+        } else {
+          amountWords = digitToChinese(amountNum);
+        }
+      }
 
       const newRecord = {
         id: 'rec_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
         eventId: eventId,
         guestName: body.guestName.trim(),
         amount: amountNum,
-        amountInWords: digitToChinese(amountNum),
+        amountInWords: amountWords,
         paymentMethod: body.paymentMethod || '现金',
-        relation: body.relation ? body.relation.trim() : '亲朋好友',
+        relation: body.relation ? body.relation.trim() : (isWhite ? '孝家亲友' : '亲朋好友'),
         seatTable: body.seatTable ? body.seatTable.trim() : '',
         giftItems: body.giftItems ? body.giftItems.trim() : '',
         recorder: body.recorder || (body.channel === 'mobile' ? '手机分台' : '主台账房'),

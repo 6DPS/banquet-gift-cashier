@@ -109,7 +109,7 @@
         <div class="stats-grid">
           <div class="stat-card total">
             <div class="stat-header">
-              <span class="stat-label">总礼金金额</span>
+              <span class="stat-label" id="statLabelTotal">总礼金金额</span>
               <span class="stat-icon">💰</span>
             </div>
             <div class="stat-value" id="statTotalAmount">¥ 0</div>
@@ -117,7 +117,7 @@
           </div>
           <div class="stat-card count">
             <div class="stat-header">
-              <span class="stat-label">随礼宾客人数</span>
+              <span class="stat-label" id="statLabelCount">随礼宾客人数</span>
               <span class="stat-icon">👥</span>
             </div>
             <div class="stat-value" id="statTotalCount">0 <span style="font-size: 15px; font-weight: normal;">位</span></div>
@@ -129,7 +129,7 @@
               <span class="stat-icon">💵</span>
             </div>
             <div class="stat-value" id="statCashTotal">¥ 0</div>
-            <div class="stat-subtext">现金收银总额</div>
+            <div class="stat-subtext">现场纸币现金</div>
           </div>
           <div class="stat-card wechat">
             <div class="stat-header">
@@ -141,11 +141,19 @@
           </div>
           <div class="stat-card alipay">
             <div class="stat-header">
-              <span class="stat-label">支付宝/其他</span>
+              <span class="stat-label">支付宝转账</span>
               <span class="stat-icon">💳</span>
             </div>
             <div class="stat-value" id="statAlipayTotal">¥ 0</div>
-            <div class="stat-subtext">网银与实物折合</div>
+            <div class="stat-subtext">支付宝收款</div>
+          </div>
+          <div class="stat-card bank">
+            <div class="stat-header">
+              <span class="stat-label">银行卡汇款</span>
+              <span class="stat-icon">🏦</span>
+            </div>
+            <div class="stat-value" id="statBankTotal">¥ 0</div>
+            <div class="stat-subtext">网银/刷卡入账</div>
           </div>
         </div>
 
@@ -388,26 +396,40 @@
               </button>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-cash);">💵 现金点钞对账</h4>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">现场收礼台实收纸币总数：</p>
-                <div style="font-size: 28px; font-weight: 700; color: var(--color-cash);" id="reconcileCashAmount">¥ 0</div>
-                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">需由总账房点清现钞并由东家签字确认。</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <h4 style="font-size: 15px; margin-bottom: 10px; color: var(--color-cash);">💵 现金点钞对账</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">现场收礼台实收纸币总数：</p>
+                <div style="font-size: 26px; font-weight: 700; color: var(--color-cash);" id="reconcileCashAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 8px;">由总账房点清现钞并交主家清点。</p>
               </div>
 
-              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-wechat);">💬 微信电子收款</h4>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">微信扫码/转账入账总额：</p>
-                <div style="font-size: 28px; font-weight: 700; color: var(--color-wechat);" id="reconcileWechatAmount">¥ 0</div>
-                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">请核对新郎/新娘/主家各自微信账单汇总。</p>
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <h4 style="font-size: 15px; margin-bottom: 10px; color: var(--color-wechat);">💬 微信电子收款</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">微信扫码/转账入账总额：</p>
+                <div style="font-size: 26px; font-weight: 700; color: var(--color-wechat);" id="reconcileWechatAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 8px;">主家微信零钱与收款码明细对账。</p>
               </div>
 
-              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-alipay);">💳 支付宝与银行</h4>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">支付宝与银行汇款总额：</p>
-                <div style="font-size: 28px; font-weight: 700; color: var(--color-alipay);" id="reconcileAlipayAmount">¥ 0</div>
-                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">外地亲友转账对账。</p>
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <h4 style="font-size: 15px; margin-bottom: 10px; color: var(--color-alipay);">💳 支付宝电子收款</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">支付宝转账收款总额：</p>
+                <div style="font-size: 26px; font-weight: 700; color: var(--color-alipay);" id="reconcileAlipayAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 8px;">支付宝账单明细对账。</p>
+              </div>
+
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <h4 style="font-size: 15px; margin-bottom: 10px; color: #3730a3;">🏦 银行卡汇款对账</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">银行跨行与POS入账总额：</p>
+                <div style="font-size: 26px; font-weight: 700; color: #3730a3;" id="reconcileBankAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 8px;">银行卡网银与汇款流水核对。</p>
+              </div>
+
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <h4 style="font-size: 15px; margin-bottom: 10px; color: #7e22ce;" id="reconcileGiftTitle">🎁 实物礼品登记</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;" id="reconcileGiftSub">随礼贺喜物品总件数：</p>
+                <div style="font-size: 26px; font-weight: 700; color: #7e22ce;" id="reconcileGiftAmount">0 件</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 8px;" id="reconcileGiftNote">烟酒茶礼与金器入库专柜核验。</p>
               </div>
             </div>
           </div>

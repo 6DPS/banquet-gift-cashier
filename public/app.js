@@ -1476,7 +1476,8 @@
           <h2 style="font-size:24px; font-weight:700; margin-bottom:10px;">系统已安全退出，后台服务已彻底终止</h2>
           <p style="color:#64748b; font-size:15px; margin-bottom:24px; max-width:480px; line-height:1.6;">
             所有电脑资源（内存与 CPU）已全部释放。系统未驻留任何自启项，开机绝不偷跑资源。<br>
-            下次需要使用时，只需在文件夹中双击 <b>start.bat</b> 即可重新启动。
+            下次需要使用时，只需在文件夹中双击 <b>start.bat</b> 即可重新启动。<br>
+            <span style="font-size:13px; color:#94a3b8; display:inline-block; margin-top:8px;">若不再需要使用本系统，可随时运行文件夹内的【一键彻底卸载系统(Windows).bat】彻底清理。</span>
           </p>
           <button onclick="window.close()" style="padding:10px 28px; font-size:15px; font-weight:600; background:#e2e8f0; color:#334155; border:none; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">关闭当前页面</button>
         </div>

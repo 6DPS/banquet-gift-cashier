@@ -142,15 +142,17 @@
 │
 ├── 启动礼金收聘系统.bat            # Windows 原生独立桌面窗口一键启动
 ├── 停止系统服务.bat                # Windows 干净释放后台进程与端口
+├── 一键彻底卸载系统(Windows).bat   # Windows 一键全自动彻底卸载、清理桌面图标与环境
 ├── 上传到GitHub(Windows).bat       # Windows 一键推送 GitHub 向导
 ├── 一键部署新电脑(Windows).bat     # Windows 新主机环境自检、防墙配置与桌面快捷向导
 ├── 一键云端同步更新(Windows).bat   # Windows 自动 pull 云端最新代码
 ├── 换机迁移与数据打包助手(Windows).bat # 一键导出 data 数据库到桌面 ZIP
 │
+├── 启动系统(Mac与Linux).sh        # Unix 平台极速启动脚本
+├── 一键彻底卸载系统(Mac与Linux).sh # Unix 平台一键彻底卸载与环境清理
 ├── 上传到GitHub(Mac).command       # Mac 一键推送 GitHub
 ├── 一键部署新电脑(Mac).command     # Mac 一键初始化部署
 ├── 一键云端同步更新(Mac).command   # Mac 一键拉取更新
-├── 启动系统(Mac与Linux).sh        # Unix 平台极速启动脚本
 │
 ├── data/                          # 本地数据存储核心目录 (物理落盘)
 │   ├── lijin_database.json        # 核心数据库文件 (宴席、明细、人情库)
@@ -171,6 +173,22 @@
     ├── setup-mac.sh               # Bash 版环境配置脚本
     └── pull-from-github.sh        # Bash 版同步脚本
 ```
+
+---
+
+## 🗑️ 一键彻底卸载与环境清理
+
+如果部署的用户在宴席结束或不再需要本系统时，系统提供了极其严谨的一键全自动卸载机制：
+
+- **Windows 用户**：直接双击根目录下的 **`一键彻底卸载系统(Windows).bat`**（或 `uninstall.bat`）；
+- **Mac / Linux 用户**：直接终端运行 **`bash 一键彻底卸载系统(Mac与Linux).sh`**（或 `./uninstall.sh`）；
+
+#### 卸载向导会自动完成以下工作：
+1. **防误触数据安全选项**：支持在卸载前将当前所有礼金账本数据一键导出备份至电脑桌面，防止误操作导致数据丢失；
+2. **彻底终止后台服务**：立即停止运行并完全释放后台 8089 端口和 Node 守护进程（CPU/内存 0 占用）；
+3. **清理桌面快捷方式**：自动扫描并删除桌面上生成的启动快捷方式图标；
+4. **清理系统防火墙配置**：移除 Windows 防火墙中的入站规则（`BanquetGiftCashier-Port8089`）；
+5. **安全自销毁清理**：完全粉碎项目文件夹及所有缓存依赖，**绝不在电脑中驻留任何自启项、服务或垃圾残留**。
 
 ---
 

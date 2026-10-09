@@ -20,6 +20,7 @@
   "author": "DPSir",
   "license": "MIT",
   "dependencies": {
+    "exceljs": "^4.4.0",
     "qrcode": "^1.5.4",
     "xlsx": "^0.18.5"
   }

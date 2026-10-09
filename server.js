@@ -5,6 +5,7 @@ const os = require('os');
 const url = require('url');
 const QRCode = require('qrcode');
 const XLSX = require('xlsx');
+const { buildStyledBanquetWorkbook } = require('./lib/excel-export');
 
 const PORT = process.env.PORT || 8089;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -343,7 +344,7 @@ function parseBody(req, callback) {
 }
 
 // API 请求处理核心
-function handleApiRequest(req, res, pathname, query) {
+async function handleApiRequest(req, res, pathname, query) {
   // GET /api/system/info
   if (pathname === '/api/system/info' && req.method === 'GET') {
     const ips = getLocalIpAddresses();
@@ -389,7 +390,7 @@ function handleApiRequest(req, res, pathname, query) {
     return;
   }
 
-  // GET /api/export/excel (导出标准 Microsoft Excel .xlsx 详单)
+  // GET /api/export/excel (导出专业排版、高颜值配色与自适应宽度的 Microsoft Excel .xlsx 详单)
   if (pathname === '/api/export/excel' && req.method === 'GET') {
     const eventId = query.eventId || database.activeEventId;
     const currentEvent = database.events.find(e => e.id === eventId) || database.events[0];
@@ -399,176 +400,25 @@ function handleApiRequest(req, res, pathname, query) {
     }
 
     const records = database.records.filter(r => r.eventId === currentEvent.id);
-    const totalAmount = records.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const cashTotal = records.filter(r => r.paymentMethod === '现金').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const wechatTotal = records.filter(r => r.paymentMethod === '微信').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const alipayTotal = records.filter(r => r.paymentMethod === '支付宝').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const bankTotal = records.filter(r => r.paymentMethod === '银行卡').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const giftTotal = records.filter(r => r.paymentMethod === '实物礼品').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-
     const isWhite = (currentEvent.eventType === 'white');
-    const giftLabel = isWhite ? '花圈祭仪折合' : '实物礼品折合';
-    const giftHeader = isWhite ? '花圈挽联/祭仪品名' : '随礼物品/附赠';
-    const notesHeader = isWhite ? '代致祭/备注' : '代随礼/备注';
-    const sheetTitle = isWhite ? `【${currentEvent.title}】奠仪香仪全场明细簿` : `【${currentEvent.title}】礼金收聘全场明细簿`;
-    const dateLabel = isWhite ? `设席日期：${currentEvent.date || '吉日'}` : `设宴吉日：${currentEvent.date || '吉日'}`;
-    const hostLabel = isWhite ? `主事家眷：${currentEvent.host || '主家'}` : `东家/主事：${currentEvent.host || '主家'}`;
 
-    const wb = XLSX.utils.book_new();
+    try {
+      const buffer = await buildStyledBanquetWorkbook(currentEvent, records);
+      const suffix = isWhite ? '奠仪香仪明细表' : '礼金收聘明细表';
+      const filename = `${currentEvent.title}_${suffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-    // =============== Sheet 1: 明细簿 ===============
-    const detailData = [
-      [sheetTitle],
-      [
-        dateLabel,
-        '',
-        hostLabel,
-        '',
-        `设宴地点：${currentEvent.location || '宴会厅'}`,
-        '',
-        `礼金总额：¥ ${totalAmount.toLocaleString()} (${digitToChinese(totalAmount)})`,
-        '',
-        `共计宾客：${records.length} 位`,
-        '',
-        `导出时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`
-      ],
-      [],
-      [
-        '序号',
-        '宾客姓名',
-        '礼金金额(元)',
-        '大写金额',
-        '支付渠道',
-        '亲友关系',
-        '席位桌号',
-        giftHeader,
-        notesHeader,
-        '录入渠道',
-        '经手人',
-        '登记时间',
-        '还礼状态',
-        '还礼金额(元)',
-        '还礼备忘'
-      ]
-    ];
-
-    records.forEach((r, idx) => {
-      const payDisplay = (r.paymentMethod === '实物礼品') ? (isWhite ? '花圈挽联' : '实物礼品') : (r.paymentMethod || '现金');
-      detailData.push([
-        idx + 1,
-        r.guestName || '',
-        Number(r.amount) || 0,
-        r.amountInWords || digitToChinese(r.amount),
-        payDisplay,
-        r.relation || '亲朋',
-        r.seatTable || '',
-        r.giftItems || '',
-        r.notes || '',
-        r.channel === 'mobile' ? '手机端' : '电脑端',
-        r.recorder || '',
-        r.createdAt ? new Date(r.createdAt).toLocaleString('zh-CN', { hour12: false }) : '',
-        r.returnStatus === 'returned' ? '已还礼' : (r.returnStatus === 'none' ? '无需还礼' : '待还礼'),
-        Number(r.returnAmount) || 0,
-        r.returnNotes || ''
-      ]);
-    });
-
-    // 底部汇总统计行
-    detailData.push([
-      '合计',
-      `全场共 ${records.length} 笔`,
-      totalAmount,
-      digitToChinese(totalAmount),
-      `现金: ¥${cashTotal} | 微信: ¥${wechatTotal} | 支付宝: ¥${alipayTotal}`,
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      ''
-    ]);
-
-    const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-    wsDetail['!cols'] = [
-      { wch: 8 },  // 序号
-      { wch: 16 }, // 宾客姓名
-      { wch: 14 }, // 礼金金额
-      { wch: 16 }, // 大写金额
-      { wch: 14 }, // 支付渠道
-      { wch: 14 }, // 亲友关系
-      { wch: 12 }, // 席位桌号
-      { wch: 18 }, // 随礼物品
-      { wch: 22 }, // 代随/备注
-      { wch: 12 }, // 录入渠道
-      { wch: 14 }, // 经手人
-      { wch: 20 }, // 登记时间
-      { wch: 12 }, // 还礼状态
-      { wch: 14 }, // 还礼金额
-      { wch: 24 }  // 还礼事项备忘
-    ];
-    wsDetail['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, wsDetail, isWhite ? '奠仪香仪明细簿' : '礼金收聘明细簿');
-
-    // =============== Sheet 2: 渠道与分类核对汇总 ===============
-    const channelRows = [
-      ['支付渠道', '收礼笔数', '合计金额(元)', '金额占比'],
-      ['现金点钞', records.filter(r => r.paymentMethod === '现金').length, cashTotal, totalAmount > 0 ? (cashTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      ['微信转账', records.filter(r => r.paymentMethod === '微信').length, wechatTotal, totalAmount > 0 ? (wechatTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      ['支付宝转账', records.filter(r => r.paymentMethod === '支付宝').length, alipayTotal, totalAmount > 0 ? (alipayTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      ['银行卡汇款', records.filter(r => r.paymentMethod === '银行卡').length, bankTotal, totalAmount > 0 ? (bankTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      [giftLabel, records.filter(r => r.paymentMethod === '实物礼品').length, giftTotal, totalAmount > 0 ? (giftTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      ['总计', records.length, totalAmount, '100.0%']
-    ];
-
-    // 亲友关系分布汇总
-    const relMap = new Map();
-    records.forEach(r => {
-      const rel = r.relation || '其他亲朋';
-      if (!relMap.has(rel)) relMap.set(rel, { count: 0, amount: 0 });
-      const item = relMap.get(rel);
-      item.count += 1;
-      item.amount += (Number(r.amount) || 0);
-    });
-
-    const relRows = [
-      [],
-      ['亲友关系分类', '来宾人数', '随礼总额(元)', '人均礼金(元)'],
-      ...Array.from(relMap.entries()).map(([rel, val]) => [
-        rel,
-        val.count,
-        val.amount,
-        Math.round(val.amount / val.count)
-      ])
-    ];
-
-    const wsSummary = XLSX.utils.aoa_to_sheet([
-      [`【${currentEvent.title}】账目核对与分类统计表`],
-      [],
-      ...channelRows,
-      ...relRows
-    ]);
-    wsSummary['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 }];
-    wsSummary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
-
-    XLSX.utils.book_append_sheet(wb, wsSummary, '账目核对与分类统计');
-
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const filename = `${currentEvent.title}_礼金收聘明细表_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-    res.writeHead(200, {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-      'Content-Length': buffer.length,
-      'Cache-Control': 'no-cache'
-    });
-    return res.end(buffer);
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        'Content-Length': buffer.length,
+        'Cache-Control': 'no-cache'
+      });
+      return res.end(buffer);
+    } catch (err) {
+      console.error('Excel 导出生成异常:', err);
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Excel 详单生成失败，请重试');
+    }
   }
 
   // GET /api/events

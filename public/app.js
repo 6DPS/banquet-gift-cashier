@@ -368,6 +368,7 @@
       if (giftBtn) giftBtn.title = '花圈挽联 / 祭仪折合 (免填礼金金额)';
       if (giftLabel) giftLabel.textContent = '花圈挽联 / 祭仪品名 (免填礼金金额)';
       if (giftInput) giftInput.placeholder = '如: 大花圈两个、挽联一副、祭礼纸帛';
+      if (dom.inputNotes) dom.inputNotes.placeholder = '如: 代二叔张建华致哀奠仪';
     } else {
       dom.body.classList.remove('theme-white');
       dom.body.classList.add('theme-red');
@@ -384,12 +385,34 @@
       if (giftBtn) giftBtn.title = '实物礼品 (如烟酒茶礼、家电金器等，免填金额)';
       if (giftLabel) giftLabel.textContent = '随礼物品 / 贺礼品名 (免填礼金金额)';
       if (giftInput) giftInput.placeholder = '如: 烟酒两箱、金手镯、高档茶礼、家电等';
+      if (dom.inputNotes) dom.inputNotes.placeholder = '如: 代二叔张建华随礼贺喜';
     }
 
-    // 若当前已选择实物项，联动刷新大写提示文本
+    // 动态切换常用身份快捷标签 (红事婚庆称谓 vs 白事祭奠称谓)
+    const relTagContainer = document.querySelector('#cashierForm .rel-tag')?.parentElement;
+    if (relTagContainer) {
+      const redRels = ['娘家亲戚', '婆家亲戚', '舅表至亲', '单位同事', '同窗好友', '邻里街坊', '世交挚友'];
+      const whiteRels = ['孝家亲属', '宗族姻亲', '生前至交', '单位同仁', '邻里乡党', '晚辈世交', '生前好友'];
+      const currentRels = eventType === 'white' ? whiteRels : redRels;
+      relTagContainer.innerHTML = `<span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">常用身份:</span>` +
+        currentRels.map(r => `<span class="quick-tag rel-tag" data-rel="${r}">${r}</span>`).join('');
+      relTagContainer.querySelectorAll('.rel-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+          dom.inputRelation.value = tag.dataset.rel;
+        });
+      });
+    }
+
+    // 联动刷新金额输入框和提示 (严防红白事文案混淆)
+    const isWhite = (eventType === 'white');
     if (state.currentPaymentMethod === '实物礼品') {
-      const isWhite = (eventType === 'white');
-      dom.amountWordsDisplay.textContent = isWhite ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)';
+      dom.amountWordsDisplay.textContent = isWhite ? '💐 花圈挽联 (免填现金)' : '🎁 实物贺礼 (免填现金)';
+      dom.inputAmount.placeholder = isWhite ? '免填金额 (花圈/挽联登记)' : '免填金额 (实物礼品登记)';
+    } else {
+      dom.inputAmount.placeholder = isWhite ? '如: 500 (回车直接保存)' : '如: 800 (回车直接保存)';
+      if (!dom.inputAmount.value) {
+        dom.amountWordsDisplay.textContent = '零元整';
+      }
     }
   }
 
@@ -427,9 +450,9 @@
     const isWhite = (state.currentEvent && state.currentEvent.eventType === 'white');
 
     if (isGift) {
-      // 实物礼品/花圈挽联：免填礼金金额
+      // 实物礼品 / 花圈挽联：严格区分文案，红事绝不出现花圈
       dom.inputAmount.required = false;
-      dom.inputAmount.placeholder = '免填金额 (实物/花圈登记)';
+      dom.inputAmount.placeholder = isWhite ? '免填金额 (花圈/挽联登记)' : '免填金额 (实物礼品登记)';
       dom.inputAmount.value = '';
       dom.amountWordsDisplay.textContent = isWhite ? '💐 花圈挽联 (免填现金)' : '🎁 实物贺礼 (免填现金)';
       dom.amountWordsDisplay.style.background = '#faf5ff';
@@ -1341,6 +1364,40 @@
       console.warn('SSE 监听异常', e);
     }
   }
+
+  // 安全退出系统后台并释放所有电脑资源
+  async function handleShutdownSystem() {
+    const confirmed = confirm('确定要彻底退出礼金收聘系统吗？\n\n退出后将关闭后台服务并释放所有电脑资源（CPU/内存）。\n下次需要使用时，只需双击 start.bat 即可重新启动。');
+    if (!confirmed) return;
+
+    try {
+      showToast('正在安全退出系统并释放资源...', 'info');
+      await fetch('/api/system/shutdown', { method: 'POST' });
+    } catch (e) {
+      // 网络断开说明服务已正常终止
+    }
+
+    setTimeout(() => {
+      document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f8fafc; color:#1e293b; text-align:center; padding:24px;">
+          <div style="font-size:64px; margin-bottom:16px;">🛑</div>
+          <h2 style="font-size:24px; font-weight:700; margin-bottom:10px;">系统已安全退出，后台服务已彻底终止</h2>
+          <p style="color:#64748b; font-size:15px; margin-bottom:24px; max-width:480px; line-height:1.6;">
+            所有电脑资源（内存与 CPU）已全部释放。系统未驻留任何自启项，开机绝不偷跑资源。<br>
+            下次需要使用时，只需在文件夹中双击 <b>start.bat</b> 即可重新启动。
+          </p>
+          <button onclick="window.close()" style="padding:10px 28px; font-size:15px; font-weight:600; background:#e2e8f0; color:#334155; border:none; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">关闭当前页面</button>
+        </div>
+      `;
+      try { window.close(); } catch(e) {}
+    }, 350);
+  }
+
+  const btnShutdown = document.getElementById('btnShutdownSystem');
+  if (btnShutdown) btnShutdown.addEventListener('click', handleShutdownSystem);
+
+  const btnShutdownTop = document.getElementById('btnShutdownTop');
+  if (btnShutdownTop) btnShutdownTop.addEventListener('click', handleShutdownSystem);
 
   // 页面启动
   async function init() {

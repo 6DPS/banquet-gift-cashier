@@ -272,13 +272,13 @@
       if (isGift) {
         mAmount.required = false;
         mAmount.value = '';
-        mAmount.placeholder = '免填金额 (实物/花圈登记)';
+        mAmount.placeholder = (currentEventType === 'white' ? '免填金额 (花圈/挽联登记)' : '免填金额 (实物礼品登记)');
         mWordsDisplay.textContent = (currentEventType === 'white' ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)');
         document.getElementById('mNotes').focus();
       } else {
         mAmount.required = true;
-        mAmount.placeholder = '输入金额';
-        mWordsDisplay.textContent = digitToChinese(mAmount.value);
+        mAmount.placeholder = (currentEventType === 'white' ? '输入奠仪金额 (如: 500)' : '输入礼金金额 (如: 800)');
+        mWordsDisplay.textContent = mAmount.value ? digitToChinese(mAmount.value) : '零元整';
       }
     }
 
@@ -317,16 +317,47 @@
             document.getElementById('mEventTypeBadge').textContent = '白事追思';
             if (giftIcon) giftIcon.textContent = '💐';
             if (giftText) giftText.textContent = '花圈挽联';
-            if (labelNotes) labelNotes.textContent = '花圈挽联 / 祭仪与事由 (实物登记)';
+            if (labelNotes) labelNotes.textContent = '花圈挽联 / 祭仪与事由 (免填金额)';
             if (inputNotes) inputNotes.placeholder = '如: 大花圈两个、挽联一副、代二叔致祭';
+            const relBox = document.querySelector('.quick-tags');
+            if (relBox) {
+              relBox.innerHTML = `
+                <span class="quick-tag m-rel-tag" data-rel="孝家">孝家</span>
+                <span class="quick-tag m-rel-tag" data-rel="姻亲">姻亲</span>
+                <span class="quick-tag m-rel-tag" data-rel="同仁">同仁</span>
+                <span class="quick-tag m-rel-tag" data-rel="故交">故交</span>
+                <span class="quick-tag m-rel-tag" data-rel="邻里">邻里</span>
+              `;
+              relBox.querySelectorAll('.m-rel-tag').forEach(tag => {
+                tag.addEventListener('click', () => { document.getElementById('mRelation').value = tag.dataset.rel; });
+              });
+            }
           } else {
             document.body.classList.remove('theme-white');
             document.body.classList.add('theme-red');
             document.getElementById('mEventTypeBadge').textContent = '红事大吉';
             if (giftIcon) giftIcon.textContent = '🎁';
             if (giftText) giftText.textContent = '实物礼品';
-            if (labelNotes) labelNotes.textContent = '随礼物品 / 贺礼品名与事由 (实物登记)';
+            if (labelNotes) labelNotes.textContent = '随礼物品 / 贺礼品名与事由 (免填金额)';
             if (inputNotes) inputNotes.placeholder = '如: 烟酒两箱、金手镯、代李四随礼';
+            const relBox = document.querySelector('.quick-tags');
+            if (relBox) {
+              relBox.innerHTML = `
+                <span class="quick-tag m-rel-tag" data-rel="娘家">娘家</span>
+                <span class="quick-tag m-rel-tag" data-rel="婆家">婆家</span>
+                <span class="quick-tag m-rel-tag" data-rel="同事">同事</span>
+                <span class="quick-tag m-rel-tag" data-rel="同学">同学</span>
+                <span class="quick-tag m-rel-tag" data-rel="街坊">街坊</span>
+              `;
+              relBox.querySelectorAll('.m-rel-tag').forEach(tag => {
+                tag.addEventListener('click', () => { document.getElementById('mRelation').value = tag.dataset.rel; });
+              });
+            }
+          }
+
+          if (currentPayMethod === '实物礼品') {
+            mAmount.placeholder = (currentEventType === 'white' ? '免填金额 (花圈/挽联登记)' : '免填金额 (实物礼品登记)');
+            mWordsDisplay.textContent = (currentEventType === 'white' ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)');
           }
         }
         if (data.stats) {

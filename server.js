@@ -357,6 +357,16 @@ function handleApiRequest(req, res, pathname, query) {
     });
   }
 
+  // POST /api/system/shutdown - 安全退出并终止后台服务释放所有资源
+  if (pathname === '/api/system/shutdown' && req.method === 'POST') {
+    sendJson(res, 200, { success: true, message: '系统服务已安全退出，资源已全部释放' });
+    setTimeout(() => {
+      console.log('系统收到退出指令，正在终止服务进程...');
+      process.exit(0);
+    }, 400);
+    return;
+  }
+
   // GET /api/system/qrcode (标准 PNG 格式高清二维码)
   if (pathname === '/api/system/qrcode' && req.method === 'GET') {
     const qrTarget = query.url || `http://localhost:${PORT}/mobile.html`;
@@ -396,15 +406,23 @@ function handleApiRequest(req, res, pathname, query) {
     const bankTotal = records.filter(r => r.paymentMethod === '银行卡').reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const giftTotal = records.filter(r => r.paymentMethod === '实物礼品').reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
+    const isWhite = (currentEvent.eventType === 'white');
+    const giftLabel = isWhite ? '花圈祭仪折合' : '实物礼品折合';
+    const giftHeader = isWhite ? '花圈挽联/祭仪品名' : '随礼物品/附赠';
+    const notesHeader = isWhite ? '代致祭/备注' : '代随礼/备注';
+    const sheetTitle = isWhite ? `【${currentEvent.title}】奠仪香仪全场明细簿` : `【${currentEvent.title}】礼金收聘全场明细簿`;
+    const dateLabel = isWhite ? `设席日期：${currentEvent.date || '吉日'}` : `设宴吉日：${currentEvent.date || '吉日'}`;
+    const hostLabel = isWhite ? `主事家眷：${currentEvent.host || '主家'}` : `东家/主事：${currentEvent.host || '主家'}`;
+
     const wb = XLSX.utils.book_new();
 
-    // =============== Sheet 1: 礼金收聘明细簿 ===============
+    // =============== Sheet 1: 明细簿 ===============
     const detailData = [
-      [`【${currentEvent.title}】礼金收聘全场明细簿`],
+      [sheetTitle],
       [
-        `设宴吉日：${currentEvent.date || '吉日'}`,
+        dateLabel,
         '',
-        `东家/主事：${currentEvent.host || '主家'}`,
+        hostLabel,
         '',
         `设宴地点：${currentEvent.location || '宴会厅'}`,
         '',
@@ -423,8 +441,8 @@ function handleApiRequest(req, res, pathname, query) {
         '支付渠道',
         '亲友关系',
         '席位桌号',
-        '随礼物品/附赠',
-        '代随礼/备注',
+        giftHeader,
+        notesHeader,
         '录入渠道',
         '经手人',
         '登记时间',
@@ -435,12 +453,13 @@ function handleApiRequest(req, res, pathname, query) {
     ];
 
     records.forEach((r, idx) => {
+      const payDisplay = (r.paymentMethod === '实物礼品') ? (isWhite ? '花圈挽联' : '实物礼品') : (r.paymentMethod || '现金');
       detailData.push([
         idx + 1,
         r.guestName || '',
         Number(r.amount) || 0,
         r.amountInWords || digitToChinese(r.amount),
-        r.paymentMethod || '现金',
+        payDisplay,
         r.relation || '亲朋',
         r.seatTable || '',
         r.giftItems || '',
@@ -495,7 +514,7 @@ function handleApiRequest(req, res, pathname, query) {
       { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }
     ];
 
-    XLSX.utils.book_append_sheet(wb, wsDetail, '礼金收聘明细簿');
+    XLSX.utils.book_append_sheet(wb, wsDetail, isWhite ? '奠仪香仪明细簿' : '礼金收聘明细簿');
 
     // =============== Sheet 2: 渠道与分类核对汇总 ===============
     const channelRows = [
@@ -504,7 +523,7 @@ function handleApiRequest(req, res, pathname, query) {
       ['微信转账', records.filter(r => r.paymentMethod === '微信').length, wechatTotal, totalAmount > 0 ? (wechatTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
       ['支付宝转账', records.filter(r => r.paymentMethod === '支付宝').length, alipayTotal, totalAmount > 0 ? (alipayTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
       ['银行卡汇款', records.filter(r => r.paymentMethod === '银行卡').length, bankTotal, totalAmount > 0 ? (bankTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
-      ['实物礼品折合', records.filter(r => r.paymentMethod === '实物礼品').length, giftTotal, totalAmount > 0 ? (giftTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
+      [giftLabel, records.filter(r => r.paymentMethod === '实物礼品').length, giftTotal, totalAmount > 0 ? (giftTotal / totalAmount * 100).toFixed(1) + '%' : '0%'],
       ['总计', records.length, totalAmount, '100.0%']
     ];
 

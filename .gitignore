@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Logs & Temporary files
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# User runtime database & backups (NEVER push personal banquet & gift records to git)
+data/
+
+# IDE & Editor caches
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>礼金收聘系统 · 账房云枢</title>
+  <link rel="stylesheet" href="/styles.css?v=1.5.0">
+</head>
+<body class="theme-red">
+  <div class="app-container">
+    
+    <!-- 左侧精致边栏 (传承自智汇云枢网盘设计) -->
+    <aside class="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo" id="brandLogo">礼</div>
+        <div class="brand-text">
+          <h2>礼金收聘系统</h2>
+          <p>端云协同 · 智能账房</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-item active" data-tab="cashier">
+          <span class="nav-icon">⚡</span>
+          <span>极速收礼台</span>
+        </div>
+        <div class="nav-item" data-tab="ledger">
+          <span class="nav-icon">📖</span>
+          <span>礼金流水簿</span>
+        </div>
+        <div class="nav-item" data-tab="reconcile">
+          <span class="nav-icon">⚖️</span>
+          <span>账目核数对账</span>
+        </div>
+        <div class="nav-item" data-tab="reciprocity">
+          <span class="nav-icon">🤝</span>
+          <span>还礼人情簿</span>
+        </div>
+        <div class="nav-item" data-tab="events">
+          <span class="nav-icon">🏮</span>
+          <span>宴席事项管理</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="lan-status-card">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="pulse-dot"></span>
+            <span style="font-weight: 500;">局域网协同在线</span>
+          </div>
+          <span id="clientCountBadge" style="color: var(--text-muted); font-size: 11px;">多端同步中</span>
+        </div>
+        <button class="btn-primary btn-sm" id="btnOpenQrModal" style="width: 100%;">
+          <span>📱</span> 手机扫码协同记账
+        </button>
+      </div>
+    </aside>
+
+    <!-- 主工作区 -->
+    <div class="main-wrapper">
+      
+      <!-- 顶栏状态与切换 (内置返回按键) -->
+      <header class="top-bar">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <!-- 内置返回收礼台按钮（不在收礼台时自动显示） -->
+          <button class="btn-ghost btn-sm btn-back-cashier" id="btnBackToCashier" style="display: none;" title="快捷返回极速录入收礼台">
+            <span>⬅️</span> <span>返回极速收礼台</span>
+          </button>
+
+          <div class="current-event-pill" id="btnSwitchEventPill" title="点击快速切换宴席活动">
+            <span class="event-type-badge" id="topEventTypeBadge">喜宴大吉</span>
+            <span class="current-event-title" id="topEventTitle">张先生 & 李女士 华堂大喜婚宴</span>
+            <span style="font-size: 12px; color: #94a3b8; font-weight: bold;">▼ 切换</span>
+          </div>
+
+          <button class="btn-ghost btn-sm" id="btnEditCurrentEventQuick" title="编辑修改当前宴席信息">
+            <span>✏️</span> <span>编辑当前宴席</span>
+          </button>
+
+          <button class="btn-ghost btn-sm" id="btnToggleThemeMode" title="在红事吉庆与白事追思间一键切换">
+            <span id="themeModeIcon">🔴</span>
+            <span id="themeModeText">切换白事追思模式</span>
+          </button>
+        </div>
+
+        <div class="top-actions">
+          <button class="btn-ghost btn-sm" id="btnPrintLedger">
+            <span>🖨️</span> 传统竖式账本
+          </button>
+          <button class="btn-secondary btn-sm" id="btnExportExcel">
+            <span>📊</span> 导出 Excel 详单
+          </button>
+          <button class="btn-primary btn-sm" id="btnNewEventQuick">
+            <span>➕</span> 新建宴席
+          </button>
+        </div>
+      </header>
+
+      <!-- 内容页面容器 -->
+      <main class="content-area">
+        
+        <!-- 全局指标概览卡片 (Stats Grid) -->
+        <div class="stats-grid">
+          <div class="stat-card total">
+            <div class="stat-header">
+              <span class="stat-label">总礼金金额</span>
+              <span class="stat-icon">💰</span>
+            </div>
+            <div class="stat-value" id="statTotalAmount">¥ 0</div>
+            <div class="stat-subtext" id="statAvgAmount">平均每笔: ¥ 0</div>
+          </div>
+          <div class="stat-card count">
+            <div class="stat-header">
+              <span class="stat-label">随礼宾客人数</span>
+              <span class="stat-icon">👥</span>
+            </div>
+            <div class="stat-value" id="statTotalCount">0 <span style="font-size: 15px; font-weight: normal;">位</span></div>
+            <div class="stat-subtext" id="statTables">预设桌数: 36 桌</div>
+          </div>
+          <div class="stat-card cash">
+            <div class="stat-header">
+              <span class="stat-label">现金收礼 (需核钞)</span>
+              <span class="stat-icon">💵</span>
+            </div>
+            <div class="stat-value" id="statCashTotal">¥ 0</div>
+            <div class="stat-subtext">现金收银总额</div>
+          </div>
+          <div class="stat-card wechat">
+            <div class="stat-header">
+              <span class="stat-label">微信扫码转账</span>
+              <span class="stat-icon">💬</span>
+            </div>
+            <div class="stat-value" id="statWechatTotal">¥ 0</div>
+            <div class="stat-subtext">主家微信入账</div>
+          </div>
+          <div class="stat-card alipay">
+            <div class="stat-header">
+              <span class="stat-label">支付宝/其他</span>
+              <span class="stat-icon">💳</span>
+            </div>
+            <div class="stat-value" id="statAlipayTotal">¥ 0</div>
+            <div class="stat-subtext">网银与实物折合</div>
+          </div>
+        </div>
+
+        <!-- 页面 1: 极速收礼台 (Cashier Tab) -->
+        <section id="viewCashier" class="tab-view active">
+          
+          <!-- 极速录入大卡片 (强化排版、加大支付渠道按钮) -->
+          <div class="entry-panel">
+            <div class="panel-title-bar">
+              <div class="panel-title">
+                <span>⚡</span>
+                <span id="cashierPanelTitle">账房极速收礼录入台</span>
+              </div>
+              <span class="shortcut-tip">键盘快捷键：[回车] 跳下一项，[数字键 1~5] 秒选支付渠道</span>
+            </div>
+
+            <form id="cashierForm" autocomplete="off">
+              <!-- 第一行：姓名、金额、身份、立即记账 -->
+              <div style="display: grid; grid-template-columns: 1.3fr 1.4fr 1.3fr auto; gap: 16px; align-items: flex-end;">
+                
+                <!-- 宾客姓名 -->
+                <div class="form-group">
+                  <label class="form-label" for="inputGuestName">
+                    <span style="font-size: 14px;">宾客姓名 <b style="color: red;">*</b></span>
+                    <span id="contactHint" style="font-size: 12px; color: #64748b; font-weight: normal;"></span>
+                  </label>
+                  <input type="text" id="inputGuestName" placeholder="输入姓名 (回车跳金额)" style="height: 48px; font-size: 16px; font-weight: 500;" required autofocus>
+                </div>
+
+                <!-- 礼金金额 -->
+                <div class="form-group">
+                  <label class="form-label" for="inputAmount">
+                    <span style="font-size: 14px;">礼金金额 (元) <b style="color: red;">*</b></span>
+                    <span class="amount-words-badge" id="amountWordsDisplay" style="font-size: 13px;">零元整</span>
+                  </label>
+                  <input type="number" id="inputAmount" placeholder="如: 800 (回车直接保存)" min="0" step="10" style="height: 48px; font-size: 22px; font-weight: 700; color: var(--theme-primary);" required>
+                </div>
+
+                <!-- 亲友关系分类 -->
+                <div class="form-group">
+                  <label class="form-label" for="inputRelation">
+                    <span style="font-size: 14px;">宾客关系 / 身份</span>
+                  </label>
+                  <input type="text" id="inputRelation" placeholder="选择或自定义 (如: 大舅)" value="亲友" style="height: 48px; font-size: 15px;">
+                </div>
+
+                <!-- 提交按钮 -->
+                <div class="form-group">
+                  <button type="submit" class="btn-primary btn-lg" id="btnSubmitRecord" style="height: 48px; padding: 0 32px; font-size: 16px;">
+                    <span>💾</span> 立即记账 (Enter)
+                  </button>
+                </div>
+
+              </div>
+
+              <!-- 第二行：加大支付渠道大按钮专区 (用户重点需求) -->
+              <div class="form-group" style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed rgba(203, 213, 225, 0.7);">
+                <label class="form-label" style="margin-bottom: 8px;">
+                  <span style="font-size: 14px; font-weight: 700;">支付渠道方式 (大尺寸触控 / 按键盘 1~5 快捷切换)</span>
+                </label>
+                <div class="pay-channel-grid" id="paymentMethodTags">
+                  <div class="pay-channel-btn active" data-method="现金">
+                    <span style="font-size: 18px;">💵</span>
+                    <span>现金点钞</span>
+                    <span class="key-hint">1</span>
+                  </div>
+                  <div class="pay-channel-btn" data-method="微信">
+                    <span style="font-size: 18px;">💬</span>
+                    <span>微信扫码 / 转账</span>
+                    <span class="key-hint">2</span>
+                  </div>
+                  <div class="pay-channel-btn" data-method="支付宝">
+                    <span style="font-size: 18px;">💳</span>
+                    <span>支付宝转账</span>
+                    <span class="key-hint">3</span>
+                  </div>
+                  <div class="pay-channel-btn" data-method="银行卡">
+                    <span style="font-size: 18px;">🏦</span>
+                    <span>银行卡汇款</span>
+                    <span class="key-hint">4</span>
+                  </div>
+                  <div class="pay-channel-btn" data-method="实物礼品" id="payMethodGiftBtn">
+                    <span style="font-size: 18px;" id="payMethodGiftIcon">🎁</span>
+                    <span id="payMethodGiftText">实物礼品</span>
+                    <span class="key-hint">5</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 第三行：快捷金额胶囊点选 与 常用关系点选 -->
+              <div style="margin-top: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">快捷金额:</span>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="200">¥200</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="500">¥500</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="600">¥600</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="800">¥800</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="1000">¥1000</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="2000">¥2000</button>
+                <button type="button" class="btn-ghost btn-sm quick-amt-btn" data-amt="5000">¥5000</button>
+                
+                <span style="margin-left: 14px; font-size: 13px; color: var(--text-muted); font-weight: 600;">常用身份:</span>
+                <span class="quick-tag rel-tag" data-rel="娘家亲戚">娘家亲戚</span>
+                <span class="quick-tag rel-tag" data-rel="婆家亲戚">婆家亲戚</span>
+                <span class="quick-tag rel-tag" data-rel="舅表至亲">舅表至亲</span>
+                <span class="quick-tag rel-tag" data-rel="单位同事">单位同事</span>
+                <span class="quick-tag rel-tag" data-rel="同窗好友">同窗好友</span>
+                <span class="quick-tag rel-tag" data-rel="邻里街坊">邻里街坊</span>
+                <span class="quick-tag rel-tag" data-rel="世交挚友">世交挚友</span>
+              </div>
+
+              <!-- 第四行：扩展输入项 (席位/附带礼物/备注) -->
+              <div class="entry-form-secondary" id="secondaryFields">
+                <div class="form-group">
+                  <label class="form-label" for="inputSeatTable">席位桌号引导 (可选)</label>
+                  <input type="text" id="inputSeatTable" placeholder="如: 主桌2号、同学6桌">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="inputGiftItems" id="labelGiftItems">随礼物品/附赠 (可选)</label>
+                  <input type="text" id="inputGiftItems" placeholder="如: 烟酒两箱、金手镯、高档茶礼">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="inputNotes">代随礼/事由备注 (可选)</label>
+                  <input type="text" id="inputNotes" placeholder="如: 代二叔张建华随礼">
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- 实时最新流水表格 -->
+          <div class="data-panel">
+            <div class="table-toolbar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <h3 style="font-size: 16px; font-weight: 700;">最新实时收礼动态</h3>
+                <span style="font-size: 12px; color: var(--text-muted);" id="liveCountLabel">已录入 5 笔</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 12px; color: var(--color-success); font-weight: 500;">● 局域网毫秒级同步监听中</span>
+              </div>
+            </div>
+
+            <div class="data-table-container">
+              <table class="data-table" id="cashierRecentTable">
+                <thead>
+                  <tr>
+                    <th style="width: 70px;">序号</th>
+                    <th>宾客姓名</th>
+                    <th>礼金金额 (元)</th>
+                    <th>大写金额</th>
+                    <th>支付渠道</th>
+                    <th>关系/身份</th>
+                    <th>席位桌号</th>
+                    <th>随礼物品/备注</th>
+                    <th>录入渠道</th>
+                    <th>登记时间</th>
+                    <th style="width: 110px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="cashierRecentTbody">
+                  <!-- 动态插入 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 页面 2: 完整礼金流水簿 (Ledger Tab - 内置返回键) -->
+        <section id="viewLedger" class="tab-view" style="display: none;">
+          <div class="data-panel">
+            <div class="table-toolbar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="btn-ghost btn-sm btn-back-cashier" onclick="window.app.backToCashier()">
+                  <span>⬅️</span> 返回收礼台
+                </button>
+                <h3 style="font-size: 16px; font-weight: 700;">全场礼金流水明细</h3>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="table-search-box">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="ledgerSearchInput" placeholder="搜索姓名 / 关系 / 备注 / 桌号...">
+                </div>
+                <div class="table-filters">
+                  <select class="filter-select" id="filterPayment">
+                    <option value="全部">全部渠道</option>
+                    <option value="现金">现金</option>
+                    <option value="微信">微信</option>
+                    <option value="支付宝">支付宝</option>
+                    <option value="银行卡">银行卡</option>
+                    <option value="实物礼品">实物礼品</option>
+                  </select>
+                  <select class="filter-select" id="filterRelation">
+                    <option value="全部">全部关系</option>
+                  </select>
+                  <button class="btn-ghost btn-sm" id="btnResetFilters">重置筛选</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="data-table-container">
+              <table class="data-table" id="fullLedgerTable">
+                <thead>
+                  <tr>
+                    <th style="width: 60px;">序号</th>
+                    <th>宾客姓名</th>
+                    <th>礼金金额</th>
+                    <th>大写金额</th>
+                    <th>支付方式</th>
+                    <th>亲友关系</th>
+                    <th>席位桌号</th>
+                    <th>物品/备注</th>
+                    <th>还礼状态</th>
+                    <th>录入人</th>
+                    <th>时间</th>
+                    <th style="width: 140px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="fullLedgerTbody">
+                  <!-- 动态插入 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 页面 3: 账目核数对账 (Reconcile Tab - 内置返回键) -->
+        <section id="viewReconcile" class="tab-view" style="display: none;">
+          <div class="entry-panel" style="margin-bottom: 24px;">
+            <div class="panel-title-bar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="btn-ghost btn-sm btn-back-cashier" onclick="window.app.backToCashier()">
+                  <span>⬅️</span> 返回收礼台
+                </button>
+                <div class="panel-title">
+                  <span>⚖️</span>
+                  <span>散席结算平账单 (总账房交接凭证)</span>
+                </div>
+              </div>
+              <button class="btn-primary btn-sm" onclick="window.print()">
+                <span>🖨️</span> 打印平账清单
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-cash);">💵 现金点钞对账</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">现场收礼台实收纸币总数：</p>
+                <div style="font-size: 28px; font-weight: 700; color: var(--color-cash);" id="reconcileCashAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">需由总账房点清现钞并由东家签字确认。</p>
+              </div>
+
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-wechat);">💬 微信电子收款</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">微信扫码/转账入账总额：</p>
+                <div style="font-size: 28px; font-weight: 700; color: var(--color-wechat);" id="reconcileWechatAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">请核对新郎/新娘/主家各自微信账单汇总。</p>
+              </div>
+
+              <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--color-alipay);">💳 支付宝与银行</h4>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">支付宝与银行汇款总额：</p>
+                <div style="font-size: 28px; font-weight: 700; color: var(--color-alipay);" id="reconcileAlipayAmount">¥ 0</div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">外地亲友转账对账。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-panel">
+            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">按亲友关系分类汇总统计</h3>
+            <div id="relationStatsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;">
+              <!-- 动态插入 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 页面 4: 还礼人情簿 (Reciprocity Tab - 内置返回键) -->
+        <section id="viewReciprocity" class="tab-view" style="display: none;">
+          <div class="data-panel">
+            <div class="table-toolbar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="btn-ghost btn-sm btn-back-cashier" onclick="window.app.backToCashier()">
+                  <span>⬅️</span> 返回收礼台
+                </button>
+                <h3 style="font-size: 16px; font-weight: 700;">亲友人情往来档案库</h3>
+                <span style="font-size: 12px; color: var(--text-muted);">终身记录亲朋随礼与还礼，做到心中有数、礼尚往来</span>
+              </div>
+              <div class="table-search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="contactSearchInput" placeholder="查找亲友姓名 (查历史还礼)...">
+              </div>
+            </div>
+
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>亲友姓名</th>
+                    <th>主要关系</th>
+                    <th>累计随礼总额</th>
+                    <th>参与场次</th>
+                    <th>待还礼笔数</th>
+                    <th>随礼明细与历史</th>
+                    <th style="width: 130px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="contactsTbody">
+                  <!-- 动态插入 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 页面 5: 宴席事项管理 (Events Tab - 内置返回键) -->
+        <section id="viewEvents" class="tab-view" style="display: none;">
+          <div class="data-panel">
+            <div class="table-toolbar">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="btn-ghost btn-sm btn-back-cashier" onclick="window.app.backToCashier()">
+                  <span>⬅️</span> 返回收礼台
+                </button>
+                <h3 style="font-size: 16px; font-weight: 700;">宴席事项管理列表</h3>
+                <span style="font-size: 12px; color: var(--text-muted);">管理所有红白喜事档案，一键切换当前收礼台</span>
+              </div>
+              <button class="btn-primary btn-sm" id="btnCreateEvent">
+                <span>➕</span> 新建宴席活动
+              </button>
+            </div>
+
+            <div id="eventsCardGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; margin-top: 14px;">
+              <!-- 动态插入宴席卡片 -->
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 1: 手机扫码局域网协同弹窗 (高保真标准矢量二维码) ================= -->
+  <div class="modal-overlay" id="modalQrCode">
+    <div class="modal-panel" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title">📱 手机扫码协同记账</div>
+        <button class="modal-close-btn" data-close="modalQrCode">&times;</button>
+      </div>
+      <div class="qr-container">
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 14px;">
+          用微信或手机相机扫描下方二维码，即可免装 App 直接手机协同录入：
+        </p>
+        
+        <!-- 高清 PNG 二维码图片渲染容器 -->
+        <div class="qr-box" id="qrSvgBox" style="width: 236px; height: 236px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 0; border: 1px solid #e2e8f0; border-radius: 14px; margin: 0 auto 16px auto; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+          <img id="qrImage" src="" alt="手机扫码协同二维码" style="width: 228px; height: 228px; display: block; object-fit: contain;" />
+        </div>
+
+        <div class="qr-url-box" style="margin-top: 12px;">
+          <span id="qrUrlText" style="font-weight: 600; color: #1e293b;">http://192.168.88.13:8089/mobile.html</span>
+          <button class="btn-ghost btn-sm" id="btnCopyQrUrl">复制网址</button>
+        </div>
+
+        <div style="margin-bottom: 14px; width: 100%;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px; text-align: left;">
+            切换局域网 IP 网卡 (智能优先匹配 Wi-Fi / WLAN):
+          </label>
+          <select id="ipSelector" class="filter-select" style="width: 100%; font-size: 13px;"></select>
+        </div>
+
+        <div class="wifi-instruction-box">
+          <b>💡 现场顺畅使用保障：</b><br>
+          1. 确保手机与这台电脑连接在同一个 <b>WiFi 路由器</b> 下；<br>
+          2. 若宴会厅没有网络，这台电脑直接开启 <b>Win10/11 移动热点</b>，手机连上电脑热点即可 100% 离线协同！<br>
+          3. 手机端录入的所有礼金，电脑屏幕将<b>秒级实时同步刷新</b>。
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" data-close="modalQrCode">我知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 2: 快捷切换宴席活动弹窗 (用户重点需求) ================= -->
+  <div class="modal-overlay" id="modalSwitchEventQuick">
+    <div class="modal-panel" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">🏮 快捷切换当前收礼宴席</div>
+        <button class="modal-close-btn" data-close="modalSwitchEventQuick">&times;</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        点击即可将电脑主账房与手机端同时切换至指定宴席活动：
+      </p>
+      <div id="quickEventListContainer" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- 动态渲染宴席列表与切换按钮 -->
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button class="btn-secondary btn-sm" id="btnGoCreateEventFromSwitch">➕ 新建其他宴席</button>
+        <button class="btn-ghost" data-close="modalSwitchEventQuick">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 3: 传统古典账本预览与打印 ================= -->
+  <div class="modal-overlay" id="modalLedgerPrint">
+    <div class="modal-panel" style="max-width: 860px;">
+      <div class="modal-header">
+        <div class="modal-title">📖 传统礼金簿 (古典排版预览)</div>
+        <button class="modal-close-btn" data-close="modalLedgerPrint">&times;</button>
+      </div>
+      <div class="ledger-preview-box" id="ledgerPrintContent">
+        <div class="ledger-header">
+          <h1 id="printLedgerTitle">张府千金文定大喜礼金簿</h1>
+          <div class="ledger-meta">
+            <span id="printLedgerDate">吉日：2026年10月18日</span>
+            <span id="printLedgerHost">东家：张建国</span>
+            <span id="printLedgerTotal">礼金总计：¥ 0</span>
+          </div>
+        </div>
+        <div class="ledger-grid" id="printLedgerGrid">
+          <!-- 传统格子排版 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="modalLedgerPrint">取消</button>
+        <button class="btn-primary" id="btnDoPrint">
+          <span>🖨️</span> 立即打印 (Ctrl+P)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 4: 新建 / 编辑宴席活动 ================= -->
+  <div class="modal-overlay" id="modalEventEdit">
+    <div class="modal-panel" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title" id="eventModalTitle">➕ 新建宴席事项</div>
+        <button class="modal-close-btn" data-close="modalEventEdit">&times;</button>
+      </div>
+      <form id="eventForm">
+        <input type="hidden" id="evtInputId" value="">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">事项类别与风格 <b style="color: red;">*</b></label>
+          <div style="display: flex; gap: 12px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="radio" name="evtTypeRadio" value="red" checked style="width: auto;"> 🔴 红事吉庆 (喜庆红)
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="radio" name="evtTypeRadio" value="white" style="width: auto;"> ⚪ 白事追思 (肃穆灰)
+            </label>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="evtInputTitle">宴席事项名称 <b style="color: red;">*</b></label>
+          <input type="text" id="evtInputTitle" placeholder="如: 张府千金大婚华宴、王老太爷寿诞" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="evtInputCategory">宴席细分类</label>
+            <input type="text" id="evtInputCategory" placeholder="如: 新婚大喜、乔迁志庆、满月酒">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evtInputDate">设宴吉日</label>
+            <input type="date" id="evtInputDate" required>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="evtInputHost">东家 / 主事人</label>
+            <input type="text" id="evtInputHost" placeholder="如: 张建国 (主家)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evtInputTables">计划设宴桌数</label>
+            <input type="number" id="evtInputTables" placeholder="30" value="30">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="evtInputLocation">设宴地点 / 厅号</label>
+          <input type="text" id="evtInputLocation" placeholder="如: 金陵国际大酒店 3楼千禧厅">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="evtInputNotes">备注事项</label>
+          <textarea id="evtInputNotes" rows="2" placeholder="如: 迎宾时间 11:18，正席 12:08"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-close="modalEventEdit">取消</button>
+          <button type="submit" class="btn-primary" id="btnSaveEventSubmit">保存事项</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 5: 还礼登记弹窗 ================= -->
+  <div class="modal-overlay" id="modalReturnGift">
+    <div class="modal-panel" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">🤝 还礼情况登记</div>
+        <button class="modal-close-btn" data-close="modalReturnGift">&times;</button>
+      </div>
+      <form id="returnGiftForm">
+        <input type="hidden" id="returnRecordId">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+          <div style="font-weight: 600; font-size: 15px;" id="returnGuestNameDisplay">李大柱</div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+            原随礼金额: <b style="color: var(--theme-primary);" id="returnOriginalAmountDisplay">¥ 500</b>
+            （<span id="returnEventTitleDisplay">婚宴大喜</span>）
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="returnStatusSelect">还礼状态</label>
+          <select id="returnStatusSelect" class="filter-select" style="width: 100%;">
+            <option value="returned">✅ 已还礼 (已礼尚往来)</option>
+            <option value="pending">⏳ 待还礼 (尚待往来)</option>
+            <option value="none">➖ 无需还礼</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="returnAmountInput">还礼金额 (元)</label>
+          <input type="number" id="returnAmountInput" placeholder="如: 600" min="0">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="returnNotesInput">还礼事项与备忘</label>
+          <input type="text" id="returnNotesInput" placeholder="如: 2026-11其子考取大学已还礼600元">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-close="modalReturnGift">取消</button>
+          <button type="submit" class="btn-primary">保存还礼记录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 全局轻量 Toast 页面内通知容器 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ================= 弹窗 6: 页面内操作确认弹窗 (彻底替换原生 confirm) ================= -->
+  <div class="modal-overlay" id="modalConfirmAction">
+    <div class="modal-panel" style="max-width: 440px;">
+      <div class="confirm-dialog-content">
+        <div class="confirm-icon-box" id="confirmModalIcon">⚠️</div>
+        <div class="confirm-title" id="confirmModalTitle">确认执行该操作？</div>
+        <div class="confirm-desc" id="confirmModalDesc">请确认是否继续此操作。</div>
+      </div>
+      <div class="modal-footer" style="justify-content: center; gap: 16px;">
+        <button type="button" class="btn-ghost" id="btnConfirmCancel">取消操作</button>
+        <button type="button" class="btn-danger" id="btnConfirmOk">确认执行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 弹窗 7: 页面内修改礼金明细弹窗 (彻底替换原生 prompt) ================= -->
+  <div class="modal-overlay" id="modalEditRecord">
+    <div class="modal-panel" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">✏️ 修改礼金记录</div>
+        <button class="modal-close-btn" data-close="modalEditRecord">&times;</button>
+      </div>
+      <form id="editRecordForm">
+        <input type="hidden" id="editRecordId">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="editGuestName">宾客姓名 <b style="color: red;">*</b></label>
+          <input type="text" id="editGuestName" required style="font-size: 15px; height: 42px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="editAmount">
+            <span>礼金金额 (元) <b style="color: red;">*</b></span>
+            <span class="amount-words-badge" id="editAmountWordsDisplay">零元整</span>
+          </label>
+          <input type="number" id="editAmount" min="0" step="10" required style="font-size: 18px; font-weight: 700; height: 44px; color: var(--theme-primary);">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="editPaymentMethod">支付渠道</label>
+            <select id="editPaymentMethod" class="filter-select" style="width: 100%; height: 42px;">
+              <option value="现金">💵 现金</option>
+              <option value="微信">💬 微信</option>
+              <option value="支付宝">💳 支付宝</option>
+              <option value="银行卡">🏦 银行卡</option>
+              <option value="实物礼品">🎁 实物礼品</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editRelation">宾客关系</label>
+            <input type="text" id="editRelation" placeholder="如: 大舅、同学" style="height: 42px;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="editSeatTable">席位桌号</label>
+            <input type="text" id="editSeatTable" placeholder="如: 主桌2号" style="height: 42px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editNotes">随礼物品 / 备注</label>
+            <input type="text" id="editNotes" placeholder="如: 烟酒两箱、代随" style="height: 42px;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-close="modalEditRecord">取消</button>
+          <button type="submit" class="btn-primary">保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 引入主控制脚本 -->
+  <script src="/app.js?v=1.5.0"></script>
+</body>
+</html>

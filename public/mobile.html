@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>礼金收聘 · 手机端协同</title>
+  <link rel="stylesheet" href="/styles.css?v=1.4.0">
+  <style>
+    body {
+      background: #faf5f5;
+      padding-bottom: 30px;
+    }
+    .mobile-header {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-glass);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .mobile-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mobile-event-card {
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-top: 10px;
+      border: 1px solid var(--border-subtle);
+    }
+    .mobile-container {
+      padding: 16px;
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    .mobile-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-glass);
+      padding: 20px;
+      box-shadow: var(--panel-shadow);
+      margin-bottom: 16px;
+    }
+    .mobile-amt-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mobile-amt-btn {
+      height: 38px;
+      padding: 0;
+      font-size: 14px;
+      border-radius: 8px;
+    }
+    .toast-msg {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 200ms ease;
+      pointer-events: none;
+    }
+    .toast-msg.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="theme-red">
+  <div id="toast" class="toast-msg">已成功同步至电脑总账！</div>
+
+  <header class="mobile-header">
+    <div class="mobile-header-top">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="brand-logo" style="width: 34px; height: 34px; font-size: 16px;">礼</div>
+        <div>
+          <h2 style="font-size: 15px; font-weight: 700;">手机端收礼分台</h2>
+          <p style="font-size: 11px; color: var(--text-muted);">实时协同连接正常</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="pulse-dot"></span>
+        <span style="font-size: 12px; color: var(--color-success); font-weight: 500;">实时联机</span>
+      </div>
+    </div>
+    <div class="mobile-event-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span class="event-type-badge" id="mEventTypeBadge">红事大吉</span>
+        <span style="font-size: 12px; color: var(--text-muted);" id="mEventDate">2026-10-18</span>
+      </div>
+      <div style="font-size: 15px; font-weight: 700; margin-top: 6px; color: var(--text-main);" id="mEventTitle">
+        张先生 & 李女士 华堂大喜婚宴
+      </div>
+    </div>
+  </header>
+
+  <main class="mobile-container">
+    <!-- 极速录入卡片 -->
+    <div class="mobile-card">
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+        <span>⚡</span> <span>收礼登记 (自动同步总账)</span>
+      </div>
+
+      <form id="mobileForm" autocomplete="off">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">
+            <span>宾客姓名 <b style="color: red;">*</b></span>
+          </label>
+          <input type="text" id="mGuestName" placeholder="请录入宾客姓名" style="font-size: 16px; height: 44px;" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">
+            <span>礼金金额 (元) <b style="color: red;">*</b></span>
+            <span class="amount-words-badge" id="mWordsDisplay">零元整</span>
+          </label>
+          <input type="number" id="mAmount" placeholder="输入金额" min="0" step="10" style="font-size: 20px; font-weight: 700; height: 48px; color: var(--theme-primary);" required>
+          
+          <div class="mobile-amt-grid">
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="200">¥200</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="500">¥500</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="600">¥600</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="800">¥800</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="1000">¥1000</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="2000">¥2000</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="3000">¥3000</button>
+            <button type="button" class="btn-ghost mobile-amt-btn" data-amt="5000">¥5000</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" style="font-weight: 700; margin-bottom: 6px;">支付方式 (点选)</label>
+          <div class="pay-channel-grid" id="mPayTags" style="gap: 8px;">
+            <div class="pay-channel-btn active" data-pay="现金" style="flex: 1; min-width: 90px; height: 46px; font-size: 14px;">
+              <span>💵</span> <span>现金</span>
+            </div>
+            <div class="pay-channel-btn" data-pay="微信" style="flex: 1; min-width: 90px; height: 46px; font-size: 14px;">
+              <span>💬</span> <span>微信</span>
+            </div>
+            <div class="pay-channel-btn" data-pay="支付宝" style="flex: 1; min-width: 90px; height: 46px; font-size: 14px;">
+              <span>💳</span> <span>支付宝</span>
+            </div>
+            <div class="pay-channel-btn" data-pay="银行卡" style="flex: 1; min-width: 90px; height: 46px; font-size: 14px;">
+              <span>🏦</span> <span>银行卡</span>
+            </div>
+            <div class="pay-channel-btn" data-pay="实物礼品" id="mPayGiftBtn" style="flex: 1; min-width: 90px; height: 46px; font-size: 14px;">
+              <span id="mPayGiftIcon">🎁</span> <span id="mPayGiftText">实物礼品</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">宾客关系</label>
+          <input type="text" id="mRelation" placeholder="如: 娘家大舅、高中同学" value="亲友">
+          <div class="quick-tags" style="margin-top: 6px;">
+            <span class="quick-tag m-rel-tag" data-rel="娘家">娘家</span>
+            <span class="quick-tag m-rel-tag" data-rel="婆家">婆家</span>
+            <span class="quick-tag m-rel-tag" data-rel="单位同事">同事</span>
+            <span class="quick-tag m-rel-tag" data-rel="同窗好友">同学</span>
+            <span class="quick-tag m-rel-tag" data-rel="街坊邻居">街坊</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label class="form-label">随礼物品 / 席位备注 (可选)</label>
+          <input type="text" id="mNotes" placeholder="如: 代李四随礼、随礼烟酒">
+        </div>
+
+        <button type="submit" class="btn-primary btn-lg" style="width: 100%; height: 50px; font-size: 17px;" id="mBtnSubmit">
+          <span>💾</span> 立即保存并同步
+        </button>
+      </form>
+    </div>
+
+    <!-- 手机端简要统计 -->
+    <div class="mobile-card">
+      <div style="font-size: 15px; font-weight: 700; margin-bottom: 10px;">📊 当前活动概览</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="background: #fff; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 12px; color: var(--text-muted);">已收总金额</div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--theme-primary);" id="mStatTotal">¥ 0</div>
+        </div>
+        <div style="background: #fff; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 12px; color: var(--text-muted);">已收笔数</div>
+          <div style="font-size: 18px; font-weight: 700;" id="mStatCount">0 位</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 手机端最近流水 -->
+    <div class="mobile-card">
+      <div style="font-size: 15px; font-weight: 700; margin-bottom: 12px;">🕒 最近经手流水</div>
+      <div id="mRecentList" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- 动态插入 -->
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentEventId = '';
+    let currentPayMethod = '现金';
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function digitToChinese(num) {
+      num = Number(num);
+      if (isNaN(num) || num <= 0) return '零元整';
+      const fraction = ['角', '分'];
+      const digit = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
+      const unit = [['元', '万', '亿'], ['', '拾', '佰', '仟']];
+      let s = '';
+      for (let i = 0; i < fraction.length; i++) {
+        s += (digit[Math.floor(num * 10 * Math.pow(10, i)) % 10] + fraction[i]).replace(/零./, '');
+      }
+      s = s || '整';
+      num = Math.floor(num);
+      for (let i = 0; i < unit[0].length && num > 0; i++) {
+        let p = '';
+        for (let j = 0; j < unit[1].length && num > 0; j++) {
+          p = digit[num % 10] + unit[1][j] + p;
+          num = Math.floor(num / 10);
+        }
+        s = p.replace(/(零.)*零$/, '').replace(/^$/, '零') + unit[0][i] + s;
+      }
+      return s.replace(/(零.)*零元/, '元').replace(/(零.)+/g, '零').replace(/^整$/, '零元整');
+    }
+
+    // 金额输入实时转大写
+    const mAmount = document.getElementById('mAmount');
+    const mWordsDisplay = document.getElementById('mWordsDisplay');
+    mAmount.addEventListener('input', () => {
+      mWordsDisplay.textContent = digitToChinese(mAmount.value);
+    });
+
+    // 快捷金额点击
+    document.querySelectorAll('.mobile-amt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        mAmount.value = btn.dataset.amt;
+        mWordsDisplay.textContent = digitToChinese(mAmount.value);
+      });
+    });
+
+    let currentEventType = 'red';
+
+    // 支付方式切换 (大尺寸按钮与实物免填金额)
+    function setMobilePayMethod(payMethod) {
+      currentPayMethod = payMethod;
+      document.querySelectorAll('#mPayTags .pay-channel-btn').forEach(t => {
+        if (t.dataset.pay === payMethod) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+
+      const isGift = (payMethod === '实物礼品');
+      if (isGift) {
+        mAmount.required = false;
+        mAmount.value = '';
+        mAmount.placeholder = '免填金额 (实物/花圈登记)';
+        mWordsDisplay.textContent = (currentEventType === 'white' ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)');
+        document.getElementById('mNotes').focus();
+      } else {
+        mAmount.required = true;
+        mAmount.placeholder = '输入金额';
+        mWordsDisplay.textContent = digitToChinese(mAmount.value);
+      }
+    }
+
+    document.querySelectorAll('#mPayTags .pay-channel-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setMobilePayMethod(btn.dataset.pay);
+      });
+    });
+
+    // 快捷关系标签
+    document.querySelectorAll('.m-rel-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        document.getElementById('mRelation').value = tag.dataset.rel;
+      });
+    });
+
+    // 加载当前活动数据
+    async function loadEventData() {
+      try {
+        const res = await fetch('/api/records');
+        const data = await res.json();
+        if (data.event) {
+          currentEventId = data.event.id;
+          currentEventType = data.event.eventType;
+          document.getElementById('mEventTitle').textContent = data.event.title;
+          document.getElementById('mEventDate').textContent = data.event.date;
+          
+          const giftIcon = document.getElementById('mPayGiftIcon');
+          const giftText = document.getElementById('mPayGiftText');
+          const labelNotes = document.getElementById('mLabelNotes');
+          const inputNotes = document.getElementById('mNotes');
+
+          if (data.event.eventType === 'white') {
+            document.body.classList.remove('theme-red');
+            document.body.classList.add('theme-white');
+            document.getElementById('mEventTypeBadge').textContent = '白事追思';
+            if (giftIcon) giftIcon.textContent = '💐';
+            if (giftText) giftText.textContent = '花圈挽联';
+            if (labelNotes) labelNotes.textContent = '花圈挽联 / 祭仪与事由 (实物登记)';
+            if (inputNotes) inputNotes.placeholder = '如: 大花圈两个、挽联一副、代二叔致祭';
+          } else {
+            document.body.classList.remove('theme-white');
+            document.body.classList.add('theme-red');
+            document.getElementById('mEventTypeBadge').textContent = '红事大吉';
+            if (giftIcon) giftIcon.textContent = '🎁';
+            if (giftText) giftText.textContent = '实物礼品';
+            if (labelNotes) labelNotes.textContent = '随礼物品 / 贺礼品名与事由 (实物登记)';
+            if (inputNotes) inputNotes.placeholder = '如: 烟酒两箱、金手镯、代李四随礼';
+          }
+        }
+        if (data.stats) {
+          document.getElementById('mStatTotal').textContent = '¥ ' + data.stats.totalAmount.toLocaleString();
+          document.getElementById('mStatCount').textContent = data.stats.totalCount + ' 位';
+        }
+        renderRecentList(data.records);
+      } catch (err) {
+        console.error('加载失败:', err);
+      }
+    }
+
+    function renderRecentList(records) {
+      const box = document.getElementById('mRecentList');
+      if (!records || records.length === 0) {
+        box.innerHTML = '<div style="color: #94a3b8; font-size: 13px; text-align: center; padding: 10px;">暂无收礼记录</div>';
+        return;
+      }
+      box.innerHTML = records.slice(0, 8).map(r => `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <div>
+            <div style="font-weight: 600; font-size: 14px;">${r.guestName} <span style="font-size: 12px; color: #64748b; font-weight: normal;">(${r.relation || '亲友'})</span></div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+              ${(r.paymentMethod === '实物礼品' && currentEventType === 'white') ? '💐 花圈挽联' : r.paymentMethod}
+              ${(r.giftItems || r.notes) ? ` · ${r.giftItems || r.notes}` : ''} · ${new Date(r.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </div>
+          </div>
+          <div style="font-weight: 700; font-size: 16px; color: var(--theme-primary);">
+            ${(r.paymentMethod === '实物礼品' && (!r.amount || Number(r.amount) === 0)) ? (currentEventType === 'white' ? '💐 花圈挽联' : '🎁 实物贺礼') : `¥ ${Number(r.amount).toLocaleString()}`}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 表单提交
+    document.getElementById('mobileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const guestName = document.getElementById('mGuestName').value.trim();
+      const isGift = (currentPayMethod === '实物礼品');
+      const amountVal = document.getElementById('mAmount').value.trim();
+      const amount = isGift ? (amountVal ? Math.max(0, Number(amountVal) || 0) : 0) : Number(amountVal);
+      const relation = document.getElementById('mRelation').value.trim() || '亲友';
+      const notes = document.getElementById('mNotes').value.trim();
+
+      if (!guestName) {
+        showToast('⚠️ 请填写宾客姓名');
+        return;
+      }
+
+      if (!isGift && (isNaN(amount) || amount <= 0)) {
+        showToast('⚠️ 请输入有效礼金金额');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: currentEventId,
+            guestName,
+            amount,
+            paymentMethod: currentPayMethod,
+            relation,
+            giftItems: isGift ? notes : '',
+            notes: notes,
+            channel: 'mobile',
+            recorder: '手机端协同'
+          })
+        });
+
+        if (res.ok) {
+          showToast(isGift ? `✅ ${guestName} 实物记录已同步！` : `✅ ${guestName} 礼金 ¥${amount} 录入成功！`);
+          document.getElementById('mGuestName').value = '';
+          document.getElementById('mAmount').value = '';
+          mWordsDisplay.textContent = '零元整';
+          document.getElementById('mNotes').value = '';
+          document.getElementById('mGuestName').focus();
+          loadEventData();
+        } else {
+          showToast('❌ 保存失败，请重试');
+        }
+      } catch (err) {
+        showToast('❌ 网络请求失败，请检查是否处于同一局域网');
+      }
+    });
+
+    // 建立 SSE 实时监听
+    const sse = new EventSource('/api/stream');
+    sse.addEventListener('record_added', () => loadEventData());
+    sse.addEventListener('event_switched', () => loadEventData());
+
+    loadEventData();
+  </script>
+</body>
+</html>

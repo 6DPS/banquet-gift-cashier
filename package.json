@@ -1,0 +1,26 @@
+{
+  "name": "banquet-gift-cashier",
+  "version": "1.5.0",
+  "description": "礼金收聘系统 · 账房云枢 (局域网多端协同 · 纯本地离线部署 · 红白喜事双模账本)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node -c server.js"
+  },
+  "keywords": [
+    "lijin",
+    "cashier",
+    "banquet",
+    "wedding",
+    "funeral",
+    "gift-ledger",
+    "offline-first",
+    "lan-sync"
+  ],
+  "author": "DPSir",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
+  }
+}

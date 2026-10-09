@@ -694,7 +694,7 @@
           </div>
         </td>
         <td class="amount-cell">${(r.paymentMethod === '实物礼品' && (!r.amount || Number(r.amount) === 0)) ? `<span style="font-size: 13px; color: #7e22ce;">${isWhite ? '💐 花圈祭仪' : '🎁 实物贺礼'}</span>` : `¥ ${Number(r.amount).toLocaleString()}`}</td>
-        <td style="font-size: 13px; color: #64748b;">${r.amountInWords || (r.paymentMethod === '实物礼品' ? (isWhite ? '花圈祭仪' : '实物礼品') : '')}</td>
+        <td style="font-size: 13px; color: #64748b;">${(r.paymentMethod === '实物礼品') ? (isWhite ? '实物奠礼' : '实物礼品') : (r.amountInWords || digitToChinese(r.amount))}</td>
         <td><span class="payment-badge ${r.paymentMethod}">${(r.paymentMethod === '实物礼品') ? (isWhite ? '💐 花圈挽联' : '🎁 实物礼品') : r.paymentMethod}</span></td>
         <td><span style="font-size: 13px;">${r.relation || '亲朋'}</span></td>
         <td style="color: #64748b; font-size: 13px;">${r.seatTable || '-'}</td>
@@ -739,7 +739,7 @@
         <td style="color: #64748b;">${i + 1}</td>
         <td><b>${r.guestName}</b></td>
         <td class="amount-cell">${(r.paymentMethod === '实物礼品' && (!r.amount || Number(r.amount) === 0)) ? `<span style="font-size: 13px; color: #7e22ce;">${isWhite ? '💐 花圈祭仪' : '🎁 实物贺礼'}</span>` : `¥ ${Number(r.amount).toLocaleString()}`}</td>
-        <td style="font-size: 13px; color: #64748b;">${r.amountInWords || (r.paymentMethod === '实物礼品' ? (isWhite ? '花圈祭仪' : '实物礼品') : '')}</td>
+        <td style="font-size: 13px; color: #64748b;">${(r.paymentMethod === '实物礼品') ? (isWhite ? '实物奠礼' : '实物礼品') : (r.amountInWords || digitToChinese(r.amount))}</td>
         <td><span class="payment-badge ${r.paymentMethod}">${(r.paymentMethod === '实物礼品') ? (isWhite ? '💐 花圈挽联' : '🎁 实物礼品') : r.paymentMethod}</span></td>
         <td>${r.relation || '亲朋'}</td>
         <td>${r.seatTable || '-'}</td>

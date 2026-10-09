@@ -644,13 +644,11 @@ async function handleApiRequest(req, res, pathname, query) {
       const isWhite = (targetEvt && targetEvt.eventType === 'white');
       const amountNum = Math.max(0, Number(body.amount) || 0);
 
-      let amountWords = body.amountInWords;
-      if (!amountWords) {
-        if (isGift) {
-          amountWords = isWhite ? (body.giftItems ? `【花圈祭仪】${body.giftItems}` : '花圈挽联') : (body.giftItems ? `【实物礼品】${body.giftItems}` : '实物礼品');
-        } else {
-          amountWords = digitToChinese(amountNum);
-        }
+      let amountWords = '';
+      if (isGift) {
+        amountWords = isWhite ? '实物奠礼' : '实物礼品';
+      } else {
+        amountWords = digitToChinese(amountNum);
       }
 
       const newRecord = {
@@ -705,9 +703,17 @@ async function handleApiRequest(req, res, pathname, query) {
         ...body,
         id: id // 保持 ID 不变
       };
-      if (body.amount !== undefined) {
-        updated.amount = Math.max(0, Number(body.amount) || 0);
-        updated.amountInWords = digitToChinese(updated.amount);
+      if (body.amount !== undefined || body.paymentMethod !== undefined) {
+        const isGiftEdit = (updated.paymentMethod === '实物礼品');
+        const targetEvt = database.events.find(e => e.id === updated.eventId);
+        const isWhiteEvt = (targetEvt && targetEvt.eventType === 'white');
+        if (isGiftEdit) {
+          updated.amount = 0;
+          updated.amountInWords = isWhiteEvt ? '实物奠礼' : '实物礼品';
+        } else {
+          updated.amount = Math.max(0, Number(updated.amount) || 0);
+          updated.amountInWords = digitToChinese(updated.amount);
+        }
       }
       database.records[index] = updated;
       saveDatabase();

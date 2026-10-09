@@ -468,7 +468,7 @@
           showToast(isGift ? `✅ ${guestName} 实物记录已同步！` : `✅ ${guestName} 礼金 ¥${amount} 录入成功！`);
           document.getElementById('mGuestName').value = '';
           document.getElementById('mAmount').value = '';
-          mWordsDisplay.textContent = '零元整';
+          mWordsDisplay.textContent = (currentPayMethod === '实物礼品') ? (currentEventType === 'white' ? '💐 花圈祭仪 (免填现金)' : '🎁 实物贺礼 (免填现金)') : '零元整';
           document.getElementById('mSeatTable').value = '';
           document.getElementById('mGiftItems').value = '';
           document.getElementById('mNotes').value = '';

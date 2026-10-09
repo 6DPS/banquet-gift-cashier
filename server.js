@@ -703,10 +703,11 @@ async function handleApiRequest(req, res, pathname, query) {
         ...body,
         id: id // 保持 ID 不变
       };
+      const isGiftEdit = (updated.paymentMethod === '实物礼品');
+      const targetEvt = database.events.find(e => e.id === updated.eventId);
+      const isWhiteEvt = (targetEvt && targetEvt.eventType === 'white');
+
       if (body.amount !== undefined || body.paymentMethod !== undefined) {
-        const isGiftEdit = (updated.paymentMethod === '实物礼品');
-        const targetEvt = database.events.find(e => e.id === updated.eventId);
-        const isWhiteEvt = (targetEvt && targetEvt.eventType === 'white');
         if (isGiftEdit) {
           updated.amount = 0;
           updated.amountInWords = isWhiteEvt ? '实物奠礼' : '实物礼品';
@@ -715,6 +716,17 @@ async function handleApiRequest(req, res, pathname, query) {
           updated.amountInWords = digitToChinese(updated.amount);
         }
       }
+
+      // 物品名称双向安全同步 (确保实物礼品修改后实时生效)
+      if (body.giftItems !== undefined) {
+        updated.giftItems = body.giftItems ? body.giftItems.trim() : '';
+      } else if (isGiftEdit && body.notes !== undefined) {
+        updated.giftItems = body.notes ? body.notes.trim() : '';
+      }
+      if (isGiftEdit && !updated.giftItems && updated.notes) {
+        updated.giftItems = updated.notes;
+      }
+
       database.records[index] = updated;
       saveDatabase();
       broadcastEvent('record_updated', updated);
@@ -727,12 +739,12 @@ async function handleApiRequest(req, res, pathname, query) {
   if (pathname.startsWith('/api/records/') && req.method === 'DELETE') {
     const id = pathname.replace('/api/records/', '');
     const index = database.records.findIndex(r => r.id === id);
-    if (index === -1) return sendJson(res, 404, { error: '记录不存在' });
+    if (index === -1) return sendJson(res, 404, { error: '记录不存在或已被作废' });
 
     const deleted = database.records.splice(index, 1)[0];
     saveDatabase();
     broadcastEvent('record_deleted', { id: id, eventId: deleted.eventId });
-    return sendJson(res, 200, { success: true, id });
+    return sendJson(res, 200, { success: true, id, guestName: deleted.guestName });
   }
 
   // GET /api/contacts/history (人情往来/还礼查询)

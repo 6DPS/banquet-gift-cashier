@@ -70,6 +70,20 @@
     }, 2800);
   }
 
+  // ================= 全局 API 异常智能分析与离线友好提示 =================
+  function handleApiError(e, fallbackMsg = '操作失败') {
+    console.error(fallbackMsg, e);
+    const isNetworkOrOffline = (!navigator.onLine) ||
+      (e instanceof TypeError && (e.message?.toLowerCase().includes('fetch') || e.message?.toLowerCase().includes('failed'))) ||
+      (e && e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('net::')));
+    
+    if (isNetworkOrOffline) {
+      showToast('后台服务未运行或连接已中断，请先双击 start.bat 启动系统', 'error');
+    } else {
+      showToast(e && e.message ? `${fallbackMsg}: ${e.message}` : fallbackMsg, 'error');
+    }
+  }
+
   // ================= 页面内确认对话框 (取代原生 confirm) =================
   function customConfirm(title, desc, confirmBtnText = '确认执行', danger = false) {
     return new Promise((resolve) => {
@@ -449,9 +463,12 @@
         state.currentEvent.eventType = newType;
         applyTheme(newType);
         showToast(`已切换为${newType === 'white' ? '白事追思' : '红事吉庆'}模式`, 'success');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || '切换主题失败', 'error');
       }
     } catch (e) {
-      showToast('切换主题异常', 'error');
+      handleApiError(e, '切换主题网络异常');
     }
   });
 
@@ -617,10 +634,11 @@
         
         await loadRecords(state.currentEvent ? state.currentEvent.id : null);
       } else {
-        showToast('保存记录失败，请检查服务状态', 'error');
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || '保存记录失败，请检查服务状态', 'error');
       }
     } catch (err) {
-      showToast('网络连接异常', 'error');
+      handleApiError(err, '录入礼金网络异常');
     }
   });
 
@@ -1045,8 +1063,7 @@
         }
       }
     } catch (err) {
-      console.error('保存宴席事项异常:', err);
-      showToast('保存宴席事项异常', 'error');
+      handleApiError(err, '保存宴席事项异常');
     }
   });
 
@@ -1185,29 +1202,59 @@
         showToast('还礼状态已更新！', 'success');
         await loadRecords(state.currentEvent ? state.currentEvent.id : null);
         if (state.activeTab === 'reciprocity') loadContactsHistory();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || '保存还礼记录失败', 'error');
       }
     } catch (err) {
-      showToast('保存还礼记录失败', 'error');
+      handleApiError(err, '保存还礼记录网络异常');
     }
   });
 
   // ================= 页面内修改礼金明细表单 =================
   dom.editAmount.addEventListener('input', () => {
-    dom.editAmountWordsDisplay.textContent = digitToChinese(dom.editAmount.value);
+    const isGift = (dom.editPaymentMethod.value === '实物礼品');
+    if (!isGift) {
+      dom.editAmountWordsDisplay.textContent = digitToChinese(dom.editAmount.value);
+    }
   });
+
+  if (dom.editPaymentMethod) {
+    dom.editPaymentMethod.addEventListener('change', () => {
+      const isGift = (dom.editPaymentMethod.value === '实物礼品');
+      const isWhite = (state.currentEvent && state.currentEvent.eventType === 'white');
+      if (isGift) {
+        dom.editAmount.value = '';
+        dom.editAmount.placeholder = isWhite ? '免填金额 (花圈/挽联祭仪)' : '免填金额 (实物礼品登记)';
+        dom.editAmountWordsDisplay.textContent = isWhite ? '实物奠礼' : '实物礼品';
+      } else {
+        dom.editAmount.placeholder = '请输入金额';
+        dom.editAmountWordsDisplay.textContent = digitToChinese(dom.editAmount.value);
+      }
+    });
+  }
 
   dom.editRecordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = dom.editRecordId.value;
     const guestName = dom.editGuestName.value.trim();
-    const amount = Number(dom.editAmount.value);
     const paymentMethod = dom.editPaymentMethod.value;
+    const isGift = (paymentMethod === '实物礼品');
+    const amountVal = dom.editAmount.value.trim();
+    const amount = isGift ? (amountVal ? Math.max(0, Number(amountVal) || 0) : 0) : Number(amountVal);
     const relation = dom.editRelation.value.trim();
     const seatTable = dom.editSeatTable.value.trim();
     const notes = dom.editNotes.value.trim();
 
-    if (!guestName || isNaN(amount) || amount <= 0) {
-      showToast('请完整填写姓名与有效金额', 'warning');
+    if (!guestName) {
+      showToast('请完整填写宾客姓名', 'warning');
+      dom.editGuestName.focus();
+      return;
+    }
+
+    if (!isGift && (isNaN(amount) || amount <= 0)) {
+      showToast('请填写有效的礼金金额', 'warning');
+      dom.editAmount.focus();
       return;
     }
 
@@ -1215,17 +1262,26 @@
       const res = await fetch(`/api/records/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestName, amount, paymentMethod, relation, seatTable, notes })
+        body: JSON.stringify({
+          guestName,
+          amount,
+          paymentMethod,
+          relation,
+          seatTable,
+          giftItems: isGift ? notes : '',
+          notes: isGift ? '' : notes
+        })
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         closeModal(dom.modalEditRecord);
-        showToast(`已更新【${guestName}】的礼金记录！`, 'success');
+        showToast(`已成功更新【${guestName}】的礼金记录！`, 'success');
         await loadRecords(state.currentEvent ? state.currentEvent.id : null);
       } else {
-        showToast('更新记录失败', 'error');
+        showToast(data.error || '更新记录失败', 'error');
       }
     } catch (err) {
-      showToast('网络通信异常', 'error');
+      handleApiError(err, '更新记录网络异常');
     }
   });
 
@@ -1241,7 +1297,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eventId })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (res.ok) {
           state.currentEvent = data.event || null;
           await loadRecords(eventId);
@@ -1253,7 +1309,7 @@
           showToast(data.error || '切换活动失败', 'error');
         }
       } catch (e) {
-        showToast('切换活动网络异常', 'error');
+        handleApiError(e, '切换活动网络异常');
       }
     },
     async deleteRecord(recordId) {
@@ -1269,12 +1325,16 @@
 
       try {
         const res = await fetch(`/api/records/${recordId}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
         if (res.ok) {
           showToast(`已成功作废【${name}】的记录`, 'success');
           await loadRecords(state.currentEvent ? state.currentEvent.id : null);
+        } else {
+          showToast(data.error || '作废记录失败', 'error');
+          await loadRecords(state.currentEvent ? state.currentEvent.id : null);
         }
       } catch (e) {
-        showToast('删除记录异常', 'error');
+        handleApiError(e, '作废记录网络异常');
       }
     },
     editRecord(recordId) {
@@ -1282,8 +1342,11 @@
       if (!rec) return;
       dom.editRecordId.value = rec.id;
       dom.editGuestName.value = rec.guestName;
-      dom.editAmount.value = rec.amount;
-      dom.editAmountWordsDisplay.textContent = digitToChinese(rec.amount);
+      const isGift = (rec.paymentMethod === '实物礼品');
+      const isWhite = (state.currentEvent && state.currentEvent.eventType === 'white');
+      dom.editAmount.value = isGift ? '' : (rec.amount || '');
+      dom.editAmount.placeholder = isGift ? (isWhite ? '免填金额 (花圈/挽联祭仪)' : '免填金额 (实物礼品登记)') : '请输入金额';
+      dom.editAmountWordsDisplay.textContent = isGift ? (isWhite ? '实物奠礼' : '实物礼品') : digitToChinese(rec.amount);
       dom.editPaymentMethod.value = rec.paymentMethod;
       dom.editRelation.value = rec.relation || '';
       dom.editSeatTable.value = rec.seatTable || '';
@@ -1350,7 +1413,7 @@
           showToast(data.error || '删除事项失败', 'error');
         }
       } catch (e) {
-        showToast('删除宴席网络异常', 'error');
+        handleApiError(e, '删除宴席网络异常');
       }
     }
   };

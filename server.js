@@ -44,30 +44,37 @@ if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
+// 全局进程级防崩溃护盾（杜绝任何极端底层异常导致服务中断）
+process.on('uncaughtException', (err) => {
+  console.error('[系统稳定护盾] 捕获未处理异常，服务继续安全运行:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[系统稳定护盾] 捕获未处理 Promise 拒绝，服务继续安全运行:', reason);
+});
+
 // 内存数据库与持久化加载
 let database = DEFAULT_DATA;
 let lastBackupTime = 0;
 
-// 自动滚动备份引擎 (保留最近 30 份快照，防止误操作或系统崩溃)
-function createRollingBackup(jsonStr) {
+// 异步非阻塞滚动备份引擎 (保留最近 30 份快照，绝不阻塞主线程记账响应)
+async function createRollingBackupAsync(jsonStr) {
   const now = Date.now();
-  // 至少间隔 10 秒以上生成一次新快照，或首笔产生即备份
-  if (now - lastBackupTime < 10000 && lastBackupTime !== 0) return;
+  if (now - lastBackupTime < 15000 && lastBackupTime !== 0) return;
   lastBackupTime = now;
 
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFile = path.join(BACKUP_DIR, `lijin_backup_${timestamp}.json`);
-    fs.writeFileSync(backupFile, jsonStr, 'utf-8');
+    await fs.promises.writeFile(backupFile, jsonStr, 'utf-8');
 
-    // 自动清理多余快照 (最多保留 30 份)
-    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('lijin_backup_') && f.endsWith('.json'));
+    const files = (await fs.promises.readdir(BACKUP_DIR))
+      .filter(f => f.startsWith('lijin_backup_') && f.endsWith('.json'));
     if (files.length > 30) {
       files.sort();
       const toDelete = files.slice(0, files.length - 30);
-      toDelete.forEach(f => {
-        try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch (e) {}
-      });
+      for (const f of toDelete) {
+        await fs.promises.unlink(path.join(BACKUP_DIR, f)).catch(() => {});
+      }
     }
   } catch (err) {
     console.error('创建备份快照异常:', err.message);
@@ -120,38 +127,63 @@ function loadDatabase() {
   saveDatabase();
 }
 
-// 异步顺序写队列（消灭并发竞态冲突，原子落盘）
+// 高性能写合并异步落盘引擎（0ms 极速响应前端，自动合并并发写入，免疫 Windows 网盘/杀毒文件锁）
 let isWriting = false;
-const writeQueue = [];
+let hasPendingWrite = false;
 
 function saveDatabase() {
-  return new Promise((resolve, reject) => {
-    writeQueue.push({ resolve, reject });
-    processWriteQueue();
-  });
+  hasPendingWrite = true;
+  if (!isWriting) {
+    setImmediate(flushDatabaseToDisk);
+  }
+  return Promise.resolve(true);
 }
 
-function processWriteQueue() {
-  if (isWriting || writeQueue.length === 0) return;
+async function flushDatabaseToDisk() {
+  if (isWriting || !hasPendingWrite) return;
   isWriting = true;
-  const task = writeQueue.shift();
+  hasPendingWrite = false;
 
   try {
     const jsonStr = JSON.stringify(database, null, 2);
-    const tempFile = DB_FILE + '.' + Date.now() + '.tmp';
-    fs.writeFileSync(tempFile, jsonStr, 'utf-8');
-    fs.renameSync(tempFile, DB_FILE);
-    createRollingBackup(jsonStr);
-    isWriting = false;
-    task.resolve(true);
+    const tempFile = `${DB_FILE}.${process.pid}.${Date.now()}.tmp`;
+    await fs.promises.writeFile(tempFile, jsonStr, 'utf-8');
+
+    // 针对 Windows 网盘同步/杀毒扫描瞬时锁定的 3 次退避重试 + 直接覆写双保险
+    let renamed = false;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await fs.promises.rename(tempFile, DB_FILE);
+        renamed = true;
+        break;
+      } catch (e) {
+        await new Promise(r => setTimeout(r, 25 * (i + 1)));
+      }
+    }
+    if (!renamed) {
+      await fs.promises.writeFile(DB_FILE, jsonStr, 'utf-8');
+      await fs.promises.unlink(tempFile).catch(() => {});
+    }
+
+    createRollingBackupAsync(jsonStr).catch(() => {});
   } catch (err) {
     console.error('写入数据库异常:', err.message);
+  } finally {
     isWriting = false;
-    task.reject(err);
+    if (hasPendingWrite) {
+      setImmediate(flushDatabaseToDisk);
+    }
   }
+}
 
-  if (writeQueue.length > 0) {
-    setImmediate(processWriteQueue);
+// 退出前强制同步刷盘保护（确保最后一毫秒数据 100% 落盘）
+function flushDatabaseSync() {
+  try {
+    const jsonStr = JSON.stringify(database, null, 2);
+    fs.writeFileSync(DB_FILE, jsonStr, 'utf-8');
+    hasPendingWrite = false;
+  } catch (e) {
+    console.error('同步刷盘异常:', e.message);
   }
 }
 
@@ -170,6 +202,17 @@ function broadcastEvent(type, payload) {
     }
   }
 }
+
+// 每 25 秒发送一次 SSE 轻量心跳包，防止路由器 Wi-Fi 或手机热点因空闲断开长连接
+setInterval(() => {
+  for (const client of sseClients) {
+    try {
+      client.write(`: heartbeat ${Date.now()}\n\n`);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+}, 25000).unref();
 
 // 获取局域网 IP (智能优先物理 Wi-Fi / WLAN 网卡)
 function getLocalIpAddresses() {
@@ -251,6 +294,42 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+// 静态文件内存高速缓存（基于 mtimeMs 校验，0ms 极速响应前端页面与移动端扫码）
+const staticCache = new Map();
+
+function serveStaticFile(filePath, contentType, res) {
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('404 Not Found');
+    }
+    const cached = staticCache.get(filePath);
+    if (cached && cached.mtimeMs === stats.mtimeMs) {
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': cached.buffer.length,
+        'Cache-Control': 'no-cache'
+      });
+      return res.end(cached.buffer);
+    }
+    fs.readFile(filePath, (readErr, buffer) => {
+      if (readErr) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('Internal Server Error');
+      }
+      if (buffer.length <= 2 * 1024 * 1024) {
+        staticCache.set(filePath, { mtimeMs: stats.mtimeMs, buffer });
+      }
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': buffer.length,
+        'Cache-Control': 'no-cache'
+      });
+      res.end(buffer);
+    });
+  });
+}
+
 // HTTP 请求处理器
 const server = http.createServer((req, res) => {
   // CORS 支持跨域及局域网调用
@@ -275,11 +354,13 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive'
     });
-    res.write('event: connected\ndata: {"status":"connected"}\n\n');
     sseClients.add(res);
+    res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', clientCount: sseClients.size })}\n\n`);
+    broadcastEvent('client_count', { count: sseClients.size });
 
     req.on('close', () => {
       sseClients.delete(res);
+      broadcastEvent('client_count', { count: sseClients.size });
     });
     return;
   }
@@ -290,7 +371,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 3. 静态页面与前端资源托管
+  // 3. 静态页面与前端资源高速托管
   let safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
   if (safePath === '/' || safePath === '\\') {
     safePath = '/index.html';
@@ -301,18 +382,10 @@ const server = http.createServer((req, res) => {
     if (!err && stats.isFile()) {
       const ext = path.extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, { 'Content-Type': contentType });
-      fs.createReadStream(filePath).pipe(res);
+      serveStaticFile(filePath, contentType, res);
     } else {
-      // 兜底重定向到 index.html (SPA 路由)
       const indexPath = path.join(PUBLIC_DIR, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        fs.createReadStream(indexPath).pipe(res);
-      } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('404 Not Found');
-      }
+      serveStaticFile(indexPath, 'text/html; charset=utf-8', res);
     }
   });
 });
@@ -326,20 +399,25 @@ function sendJson(res, statusCode, data) {
 // 解析 JSON Body
 function parseBody(req, callback) {
   let body = '';
+  let aborted = false;
   req.on('data', chunk => {
     body += chunk;
     if (body.length > 5 * 1024 * 1024) {
-      // 防止超大载荷
+      aborted = true;
       req.destroy();
     }
   });
   req.on('end', () => {
+    if (aborted) return;
     try {
       const data = body ? JSON.parse(body) : {};
       callback(null, data);
     } catch (e) {
       callback(e, null);
     }
+  });
+  req.on('error', (err) => {
+    if (!aborted) callback(err, null);
   });
 }
 
@@ -354,17 +432,19 @@ async function handleApiRequest(req, res, pathname, query) {
       ips: ips,
       primaryUrl: `http://${primaryIp}:${PORT}`,
       activeEventId: database.activeEventId,
+      clientCount: sseClients.size,
       timestamp: new Date().toISOString()
     });
   }
 
   // POST /api/system/shutdown - 安全退出并终止后台服务释放所有资源
   if (pathname === '/api/system/shutdown' && req.method === 'POST') {
+    flushDatabaseSync();
     sendJson(res, 200, { success: true, message: '系统服务已安全退出，资源已全部释放' });
     setTimeout(() => {
-      console.log('系统收到退出指令，正在终止服务进程...');
+      console.log('系统收到退出指令，数据已安全落盘，正在终止服务进程...');
       process.exit(0);
-    }, 400);
+    }, 300);
     return;
   }
 

@@ -118,8 +118,12 @@
     });
   }
 
-  // 成功记账轻音效反馈 (Web Audio API)
+  // 成功记账轻音效反馈 (Web Audio API，带 180ms 防重音保护)
+  let lastSoundTime = 0;
   function playSuccessSound() {
+    const now = Date.now();
+    if (now - lastSoundTime < 180) return;
+    lastSoundTime = now;
     try {
       if (!state.audioContext) {
         state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -576,9 +580,12 @@
     }
   });
 
-  // 提交记账
+  // 提交记账（带原子防连击锁，杜绝手抖连按回车导致重复入账）
+  let isSubmittingCashier = false;
   dom.cashierForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isSubmittingCashier) return;
+
     const guestName = dom.inputGuestName.value.trim();
     const isGift = (state.currentPaymentMethod === '实物礼品');
     const amountVal = dom.inputAmount.value.trim();
@@ -601,6 +608,7 @@
       return;
     }
 
+    isSubmittingCashier = true;
     try {
       const res = await fetch('/api/records', {
         method: 'POST',
@@ -632,41 +640,63 @@
         dom.contactHint.textContent = '';
         dom.inputGuestName.focus();
         
-        await loadRecords(state.currentEvent ? state.currentEvent.id : null);
+        loadRecords(state.currentEvent ? state.currentEvent.id : null);
       } else {
         const errData = await res.json().catch(() => ({}));
         showToast(errData.error || '保存记录失败，请检查服务状态', 'error');
       }
     } catch (err) {
       handleApiError(err, '录入礼金网络异常');
+    } finally {
+      isSubmittingCashier = false;
     }
   });
 
-  // ================= 数据加载与渲染 =================
+  // ================= 数据加载与渲染 (带微批次合并锁，消除本地提交+SSE广播双重请求与双重重绘) =================
+  let pendingLoadPromise = null;
+  let queuedEventId = undefined;
+
   async function loadRecords(targetEventId) {
-    try {
-      let url = '/api/records';
-      if (targetEventId) {
-        url += `?eventId=${targetEventId}`;
-      } else if (state.currentEvent && state.currentEvent.id) {
-        url += `?eventId=${state.currentEvent.id}`;
-      }
-
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      state.currentEvent = data.event;
-      state.records = data.records || [];
-      state.stats = data.stats || state.stats;
-
-      updateTopBarUI();
-      renderStatsCards();
-      renderRecentTable();
-      renderFullLedgerTable();
-      populateRelationFilter();
-    } catch (err) {
-      console.error('加载记录异常:', err);
+    if (pendingLoadPromise) {
+      queuedEventId = targetEventId;
+      return pendingLoadPromise;
     }
+
+    pendingLoadPromise = (async () => {
+      try {
+        let url = '/api/records';
+        if (targetEventId) {
+          url += `?eventId=${targetEventId}`;
+        } else if (state.currentEvent && state.currentEvent.id) {
+          url += `?eventId=${state.currentEvent.id}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        state.currentEvent = data.event;
+        state.records = data.records || [];
+        state.stats = data.stats || state.stats;
+
+        updateTopBarUI();
+        renderStatsCards();
+        renderRecentTable();
+        renderFullLedgerTable();
+        populateRelationFilter();
+        if (state.activeTab === 'reconcile') renderReconcileView();
+      } catch (err) {
+        console.error('加载记录异常:', err);
+      } finally {
+        pendingLoadPromise = null;
+        if (queuedEventId !== undefined) {
+          const nextId = queuedEventId;
+          queuedEventId = undefined;
+          loadRecords(nextId);
+        }
+      }
+    })();
+
+    return pendingLoadPromise;
   }
 
   function updateTopBarUI() {
@@ -1418,11 +1448,39 @@
     }
   };
 
-  // ================= SSE 实时广播多端监听 =================
+  // ================= SSE 实时广播多端监听与断线自愈 =================
   function initSSE() {
     if (new URLSearchParams(window.location.search).get('no_sse')) return;
     try {
       const sse = new EventSource('/api/stream');
+      const badgeEl = document.getElementById('clientCountBadge');
+      const pulseEl = document.querySelector('.lan-status-card .pulse-dot');
+      let wasDisconnected = false;
+
+      sse.onopen = () => {
+        if (pulseEl) pulseEl.style.background = '#10b981';
+        if (wasDisconnected) {
+          wasDisconnected = false;
+          loadRecords(state.currentEvent ? state.currentEvent.id : null);
+          loadEvents();
+        }
+      };
+
+      sse.onerror = () => {
+        wasDisconnected = true;
+        if (pulseEl) pulseEl.style.background = '#ef4444';
+        if (badgeEl) badgeEl.textContent = '重连中...';
+      };
+
+      sse.addEventListener('client_count', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (badgeEl && data.count) {
+            badgeEl.textContent = `${data.count} 端实时同步`;
+          }
+        } catch (err) {}
+      });
+
       sse.addEventListener('record_added', () => {
         playSuccessSound();
         loadRecords(state.currentEvent ? state.currentEvent.id : null);

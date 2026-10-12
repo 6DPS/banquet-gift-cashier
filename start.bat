@@ -22,7 +22,6 @@ if %errorlevel% equ 0 (
 ) else (
     echo [1/2] Starting background service silently on Port 8089...
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-server.ps1"
-    ping 127.0.0.1 -n 3 >nul 2>nul
 )
 
 echo [2/2] Opening application window...

@@ -424,9 +424,12 @@
       }).join('');
     }
 
-    // 表单提交
+    // 表单提交（带原子防连击锁，防止手机触屏连点导致重复记账）
+    let isSubmittingMobile = false;
     document.getElementById('mobileForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (isSubmittingMobile) return;
+
       const guestName = document.getElementById('mGuestName').value.trim();
       const isGift = (currentPayMethod === '实物礼品');
       const amountVal = document.getElementById('mAmount').value.trim();
@@ -446,6 +449,7 @@
         return;
       }
 
+      isSubmittingMobile = true;
       try {
         const res = await fetch('/api/records', {
           method: 'POST',
@@ -479,14 +483,27 @@
         }
       } catch (err) {
         showToast('❌ 网络请求失败，请检查是否处于同一局域网');
+      } finally {
+        isSubmittingMobile = false;
       }
     });
 
-    // 建立 SSE 实时监听
+    // 建立 SSE 实时监听与断线重连自愈
     if (!new URLSearchParams(window.location.search).get('no_sse')) {
       const sse = new EventSource('/api/stream');
+      let wasOffline = false;
+      sse.onopen = () => {
+        if (wasOffline) {
+          wasOffline = false;
+          loadEventData();
+        }
+      };
+      sse.onerror = () => { wasOffline = true; };
       sse.addEventListener('record_added', () => loadEventData());
+      sse.addEventListener('record_updated', () => loadEventData());
+      sse.addEventListener('record_deleted', () => loadEventData());
       sse.addEventListener('event_switched', () => loadEventData());
+      sse.addEventListener('event_updated', () => loadEventData());
     }
 
     loadEventData();

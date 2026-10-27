@@ -67,7 +67,7 @@ if (!cscExe) {
 }
 console.log(`  找到 .NET 编译器: ${cscExe}`);
 
-const compileCmd = `"${cscExe}" /target:winexe /win32icon:"${path.join(ROOT_DIR, 'assets', 'app.ico')}" /r:"${path.join(ROOT_DIR, 'lib-desktop', 'Microsoft.Web.WebView2.WinForms.dll')}" /r:"${path.join(ROOT_DIR, 'lib-desktop', 'Microsoft.Web.WebView2.Core.dll')}" /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"${path.join(ROOT_DIR, 'BanquetCashier.exe')}" "${path.join(ROOT_DIR, 'src-launcher', 'Program.cs')}"`;
+const compileCmd = `"${cscExe}" /target:winexe /win32icon:"${path.join(ROOT_DIR, 'assets', 'app.ico')}" /win32manifest:"${path.join(ROOT_DIR, 'src-launcher', 'app.manifest')}" /r:"${path.join(ROOT_DIR, 'lib-desktop', 'Microsoft.Web.WebView2.WinForms.dll')}" /r:"${path.join(ROOT_DIR, 'lib-desktop', 'Microsoft.Web.WebView2.Core.dll')}" /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"${path.join(ROOT_DIR, 'BanquetCashier.exe')}" "${path.join(ROOT_DIR, 'src-launcher', 'Program.cs')}"`;
 try {
   execSync(compileCmd, { stdio: 'inherit', cwd: ROOT_DIR });
   console.log('  [OK] 原生桌面程序重新编译成功！内嵌烫金专属图标与 WebView2 独立渲染内核。\n');

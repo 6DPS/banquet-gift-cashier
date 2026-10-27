@@ -4,7 +4,7 @@
    ========================================================================== */
 
 :root {
-  --font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Roboto, sans-serif;
   
   /* 基础与布局 */
   --bg-color: #faf5f5;
@@ -68,6 +68,9 @@ body.theme-white {
 
 body {
   font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   color: var(--text-main);
   min-height: 100vh;
   background:

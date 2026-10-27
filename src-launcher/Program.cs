@@ -25,6 +25,7 @@ namespace BanquetCashierNativeApp
         public MainForm()
         {
             this.Text = APP_TITLE;
+            this.AutoScaleMode = AutoScaleMode.Dpi;
             this.Size = new Size(1420, 920);
             this.MinimumSize = new Size(1100, 720);
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -67,7 +68,9 @@ namespace BanquetCashierNativeApp
                 );
                 Directory.CreateDirectory(dataFolder);
 
-                var env = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+                // 启用高清硬件抗锯齿与真实像素渲染
+                var envOptions = new CoreWebView2EnvironmentOptions();
+                var env = await CoreWebView2Environment.CreateAsync(null, dataFolder, envOptions);
                 await webView.EnsureCoreWebView2Async(env);
 
                 // 优化界面沉浸感，禁用多余状态栏，允许快捷键缩放
@@ -195,6 +198,45 @@ namespace BanquetCashierNativeApp
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool SetDllDirectory(string lpPathName);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetProcessDpiAwarenessContext(IntPtr dpiFlag);
+
+        [DllImport("shcore.dll", SetLastError = true)]
+        private static extern int SetProcessDpiAwareness(int awareness);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetProcessDPIAware();
+
+        private static void EnableHighDpiSupport()
+        {
+            try
+            {
+                // Windows 10 Creators Update (1703)+ : Per-Monitor V2 (-4)
+                if (SetProcessDpiAwarenessContext((IntPtr)(-4)))
+                {
+                    return;
+                }
+            }
+            catch {}
+
+            try
+            {
+                // Windows 8.1+ : PROCESS_PER_MONITOR_DPI_AWARE = 2
+                if (SetProcessDpiAwareness(2) == 0)
+                {
+                    return;
+                }
+            }
+            catch {}
+
+            try
+            {
+                // Windows Vista / 7+ : System DPI Aware
+                SetProcessDPIAware();
+            }
+            catch {}
+        }
+
         private static void SetupAssemblyResolution()
         {
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -241,6 +283,9 @@ namespace BanquetCashierNativeApp
                 catch {}
                 return;
             }
+
+            // 启用顶级 PerMonitorV2 高清 DPI 缩放渲染，彻底杜绝字体模糊与位图拉伸
+            EnableHighDpiSupport();
 
             SetupAssemblyResolution();
             RunApplication();

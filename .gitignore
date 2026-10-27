@@ -17,6 +17,12 @@ desktop.ini
 # User runtime database & backups (NEVER push personal banquet & gift records to git)
 data/
 
+# Build & Distribution artifacts
+build_temp/
+dist/
+runtime/
+BanquetCashier.exe
+
 # IDE & Editor caches
 .idea/
 .vscode/

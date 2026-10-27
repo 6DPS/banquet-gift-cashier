@@ -78,7 +78,7 @@
       (e && e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('net::')));
     
     if (isNetworkOrOffline) {
-      showToast('后台服务未运行或连接已中断，请先双击 start.bat 启动系统', 'error');
+      showToast('后台服务未运行或连接已中断，请双击桌面【礼金收聘系统】重新启动', 'error');
     } else {
       showToast(e && e.message ? `${fallbackMsg}: ${e.message}` : fallbackMsg, 'error');
     }
@@ -1517,7 +1517,7 @@
 
   // 安全退出系统后台并释放所有电脑资源
   async function handleShutdownSystem() {
-    const confirmed = confirm('确定要彻底退出礼金收聘系统吗？\n\n退出后将关闭后台服务并释放所有电脑资源（CPU/内存）。\n下次需要使用时，只需双击 start.bat 即可重新启动。');
+    const confirmed = confirm('确定要退出礼金收聘系统吗？\n\n退出后将安全关闭后台服务并释放所有电脑资源（CPU/内存）。\n下次需要使用时，只需双击桌面的【礼金收聘系统】图标即可秒开启动。');
     if (!confirmed) return;
 
     try {
@@ -1534,8 +1534,8 @@
           <h2 style="font-size:24px; font-weight:700; margin-bottom:10px;">系统已安全退出，后台服务已彻底终止</h2>
           <p style="color:#64748b; font-size:15px; margin-bottom:24px; max-width:480px; line-height:1.6;">
             所有电脑资源（内存与 CPU）已全部释放。系统未驻留任何自启项，开机绝不偷跑资源。<br>
-            下次需要使用时，只需在文件夹中双击 <b>start.bat</b> 即可重新启动。<br>
-            <span style="font-size:13px; color:#94a3b8; display:inline-block; margin-top:8px;">若不再需要使用本系统，可随时运行文件夹内的【一键彻底卸载系统(Windows).bat】彻底清理。</span>
+            下次需要使用时，只需双击桌面的 <b>礼金收聘系统</b> 图标即可秒开启动。<br>
+            <span style="font-size:13px; color:#94a3b8; display:inline-block; margin-top:8px;">若需要卸载本系统，可随时在 Windows“控制面板 / 设置 - 应用”中一键干净卸载。</span>
           </p>
           <button onclick="window.close()" style="padding:10px 28px; font-size:15px; font-weight:600; background:#e2e8f0; color:#334155; border:none; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">关闭当前页面</button>
         </div>
